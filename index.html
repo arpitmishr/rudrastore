@@ -194,6 +194,14 @@
                 <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex flex-wrap gap-4 items-end">
                     <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Start Date</label><input type="date" id="filter-trans-start" class="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"></div>
                     <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">End Date</label><input type="date" id="filter-trans-end" class="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"></div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">GST Filter</label>
+                        <select id="filter-trans-gst" class="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
+                            <option value="All">All Transactions</option>
+                            <option value="GST">GST Only</option>
+                            <option value="Non-GST">Non-GST Only</option>
+                        </select>
+                    </div>
                     <button id="btn-trans-filter" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition active:scale-95"><i class="fa-solid fa-filter mr-1"></i> Apply</button>
                     <button id="btn-trans-clear" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg text-sm font-semibold transition active:scale-95">Clear Filters</button>
                 </div>
@@ -325,28 +333,39 @@
                 </div>
             </div>
 
-            <div id="tab-purchases" class="tab max-w-3xl mx-auto">
+            <div id="tab-purchases" class="tab max-w-4xl mx-auto">
                 <h1 class="text-2xl font-bold mb-6">Record Purchases</h1>
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger"><i class="fa-solid fa-truck-ramp-box"></i></div>
-                        <div><h3 class="text-lg font-bold">New Inventory Arrival</h3><p class="text-xs text-gray-500 dark:text-gray-400">Money out, stock goes up instantly.</p></div>
+                        <div><h3 class="text-lg font-bold">New Inventory Arrival</h3><p class="text-xs text-gray-500 dark:text-gray-400">Log all necessary details for complete tracking.</p></div>
                     </div>
                     <form id="form-purchase" class="space-y-4">
-                        <div class="relative">
-                            <label class="block text-sm font-semibold mb-1">Item Name</label>
-                            <input type="text" id="purchase-item" autocomplete="off" required placeholder="Search or create new..." class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-danger outline-none transition-all">
-                            <div id="purchase-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
-                            </div>
-                        </div>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-sm font-semibold mb-1">Quantity Added</label><input type="number" id="purchase-qty" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-danger outline-none"></div>
-                            <div><label class="block text-sm font-semibold mb-1">Total Paid (₹)</label><input type="number" id="purchase-amount" required placeholder="0.00" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 text-danger placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-danger outline-none font-bold text-lg"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label class="block text-sm font-semibold mb-1">Purchase Date</label><input type="date" id="purchase-date" required class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Supplier Name</label><input type="text" id="purchase-supplier" required placeholder="E.g., ABC Traders" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Invoice No.</label><input type="text" id="purchase-invoice" required placeholder="INV-12345" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
                         </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="relative">
+                                <label class="block text-sm font-semibold mb-1">Item Name</label>
+                                <input type="text" id="purchase-item" autocomplete="off" required placeholder="Search or create new..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-danger outline-none transition-all">
+                                <div id="purchase-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
+                            </div>
+                            <div><label class="block text-sm font-semibold mb-1">Part Number</label><input type="text" id="purchase-part" placeholder="E.g., PN-001" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label class="block text-sm font-semibold mb-1">Qty Purchased</label><input type="number" id="purchase-qty" required placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Purchase Rate (₹)</label><input type="number" step="0.01" id="purchase-rate" required placeholder="0.00" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Total Amount (₹)</label><input type="number" id="purchase-amount" readonly placeholder="0.00" class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-danger border border-gray-200 dark:border-gray-600 rounded-lg font-bold outline-none cursor-not-allowed"></div>
+                        </div>
+
                         <label class="flex items-center gap-2 mt-2">
                             <input type="checkbox" id="purchase-gst" class="w-4 h-4 text-danger bg-gray-100 border-gray-300 rounded focus:ring-danger dark:bg-gray-700 dark:border-gray-600">
-                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">GST Applicable</span>
+                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Item Purchased with GST</span>
                         </label>
                         <button type="submit" class="w-full bg-danger hover:bg-red-600 text-white font-bold py-4 rounded-xl shadow-md transition-all active:scale-95 mt-4 text-lg">Save Purchase Data</button>
                     </form>
@@ -379,6 +398,7 @@
                     <h3 id="inv-form-title" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Add new item</h3>
                     <form id="form-inventory" class="flex flex-col md:flex-row gap-3 items-center">
                         <input type="text" id="inv-name" required placeholder="Item name..." class="flex-1 w-full px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
+                        <input type="text" id="inv-part" placeholder="Part No." class="w-full md:w-32 px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
                         <input type="number" id="inv-qty" required placeholder="Qty" min="0" class="w-full md:w-28 px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
                         <input type="number" id="inv-price" required step="0.01" placeholder="Cost (₹)" min="0" class="w-full md:w-32 px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
                         <label class="flex items-center gap-1 w-full md:w-auto px-2">
