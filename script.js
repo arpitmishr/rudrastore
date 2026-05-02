@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, getDocs, where, writeBatch, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, writeBatch, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -453,7 +453,7 @@ function renderTransactionsTable() {
         <tr>
             <td class="px-6 py-4 whitespace-nowrap">${tDate.toLocaleDateString()}</td>
             <td class="px-6 py-4 whitespace-nowrap font-bold ${tColorClass}">${t.type}</td>
-            <td class="px-6 py-4">${t.item || "Unknown"} ${gstBadge}</td>
+            <td class="px-6 py-4 flex items-center">${t.item || "Unknown"} ${gstBadge}</td>
             <td class="px-6 py-4 whitespace-nowrap">${Number(t.qty) || 0}</td>
             <td class="px-6 py-4 whitespace-nowrap font-semibold">₹${(Number(t.amount) || 0).toFixed(2)}</td>
             <td class="px-6 py-4 text-center whitespace-nowrap">${actionBtn}</td>
