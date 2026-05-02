@@ -32,6 +32,9 @@ let myChartFSN = null;
 const todayStr = new Date().toISOString().split('T')[0];
 document.getElementById('filter-trans-start').value = todayStr;
 document.getElementById('filter-trans-end').value = todayStr;
+if(document.getElementById('purchase-date')) {
+    document.getElementById('purchase-date').value = todayStr;
+}
 
 function showSuccessAnimation(msg = "Success!") {
     const overlay = document.getElementById('success-overlay');
@@ -222,7 +225,7 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
         if (filtered.length === 0) {
             html = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">No inventory items found.</div>`;
             if (!isSale && queryStr) {
-                html += `<div class="px-4 py-3 bg-danger/10 text-danger cursor-pointer font-semibold text-sm hover:bg-danger hover:text-white transition-colors dropdown-item" data-name="${inputEl.value}" data-price="0" data-gst="">
+                html += `<div class="px-4 py-3 bg-danger/10 text-danger cursor-pointer font-semibold text-sm hover:bg-danger hover:text-white transition-colors dropdown-item" data-name="${inputEl.value}" data-price="0" data-gst="" data-part="">
                     <i class="fa-solid fa-plus mr-2"></i> Add as new item: "${inputEl.value}"
                 </div>`;
             }
@@ -246,9 +249,13 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
                 items.forEach(item => {
                     const priceStr = Number(item.price).toFixed(2);
                     const gstAttr = item.hasGST ? 'true' : '';
+                    const partAttr = item.partNumber || '';
                     html += `
-                    <div class="px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center dropdown-item border-b border-gray-50 dark:border-gray-700 dark:last:border-0 transition-colors" data-name="${item.name}" data-price="${item.price}" data-gst="${gstAttr}">
-                        <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${item.name}</span>
+                    <div class="px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center dropdown-item border-b border-gray-50 dark:border-gray-700 dark:last:border-0 transition-colors" data-name="${item.name}" data-price="${item.price}" data-gst="${gstAttr}" data-part="${partAttr}">
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${item.name}</span>
+                            ${partAttr ? `<span class="text-[10px] text-gray-400">PN: ${partAttr}</span>` : ''}
+                        </div>
                         <div class="text-right">
                             <span class="block text-xs text-gray-500 dark:text-gray-400">Stock: ${item.qty}</span>
                             <span class="block text-xs font-bold text-primary">₹${priceStr}</span>
@@ -271,6 +278,9 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
                     document.getElementById('sale-cost').value = el.getAttribute('data-price');
                 } else {
                     document.getElementById('purchase-gst').checked = !!el.getAttribute('data-gst');
+                    if (document.getElementById('purchase-part')) {
+                        document.getElementById('purchase-part').value = el.getAttribute('data-part') || '';
+                    }
                 }
             });
         });
@@ -426,12 +436,14 @@ document.getElementById('btn-trans-filter').addEventListener('click', renderTran
 document.getElementById('btn-trans-clear').addEventListener('click', () => { 
     document.getElementById('filter-trans-start').value = ''; 
     document.getElementById('filter-trans-end').value = ''; 
+    document.getElementById('filter-trans-gst').value = 'All';
     renderTransactionsTable(); 
 });
 
 function renderTransactionsTable() {
     const startVal = document.getElementById('filter-trans-start').value; 
     const endVal = document.getElementById('filter-trans-end').value;
+    const gstFilter = document.getElementById('filter-trans-gst').value;
     let sD = startVal ? new Date(startVal + 'T00:00:00') : null; 
     let eD = endVal ? new Date(endVal + 'T23:59:59') : null;
     let html = [];
@@ -442,6 +454,9 @@ function renderTransactionsTable() {
         if (sD && tDate < sD) return; 
         if (eD && tDate > eD) return;
         
+        if (gstFilter === 'GST' && !t.hasGST) return;
+        if (gstFilter === 'Non-GST' && t.hasGST) return;
+        
         let tColorClass = t.type.includes('Sale') ? (t.type.includes('Cosmetic') ? 'text-cosmetic' : 'text-success') : (t.type.includes('Purchase') ? 'text-danger' : 'text-warning');
         let actionBtn = (t.type === 'Sale' || t.type === 'Purchase' || t.type === 'Cosmetic Sale') 
             ? `<button class="btn-return bg-warning/20 hover:bg-warning text-warning hover:text-white px-3 py-1 rounded text-xs font-bold transition-colors" data-id="${t.id}">Return</button>`
@@ -449,11 +464,19 @@ function renderTransactionsTable() {
             
         let gstBadge = t.hasGST ? `<span class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold uppercase">GST</span>` : '';
         
+        let extraInfo = '';
+        if (t.type === 'Purchase') {
+            if (t.supplier) extraInfo += `<span class="block text-[10px] text-gray-500 mt-0.5">Supp: ${t.supplier} | Inv: ${t.invoice || 'N/A'}</span>`;
+        }
+
         html.push(`
         <tr>
             <td class="px-6 py-4 whitespace-nowrap">${tDate.toLocaleDateString()}</td>
             <td class="px-6 py-4 whitespace-nowrap font-bold ${tColorClass}">${t.type}</td>
-            <td class="px-6 py-4 flex items-center">${t.item || "Unknown"} ${gstBadge}</td>
+            <td class="px-6 py-4">
+                <div class="flex items-center">${t.item || "Unknown"} ${gstBadge}</div>
+                ${extraInfo}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap">${Number(t.qty) || 0}</td>
             <td class="px-6 py-4 whitespace-nowrap font-semibold">₹${(Number(t.amount) || 0).toFixed(2)}</td>
             <td class="px-6 py-4 text-center whitespace-nowrap">${actionBtn}</td>
@@ -677,9 +700,10 @@ function updateCartUI() {
         cartContainer.classList.remove('hidden');
         saleCart.forEach((cartItem, index) => {
             totalAmount += cartItem.amount;
+            let gstBadge = cartItem.hasGST ? `<span class="bg-indigo-100 text-indigo-700 text-[10px] px-1 rounded ml-1 font-bold">GST</span>` : '';
             cartList.innerHTML += `
                 <li class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                    <span class="text-gray-800 dark:text-gray-200">${cartItem.item} <b class="text-primary">(x${cartItem.qty})</b></span>
+                    <span class="text-gray-800 dark:text-gray-200">${cartItem.item} ${gstBadge} <b class="text-primary">(x${cartItem.qty})</b></span>
                     <span class="font-bold">₹${cartItem.amount.toFixed(2)} 
                         <button type="button" onclick="window.removeCartItem(${index})" class="text-danger hover:text-red-700 ml-3 transition-colors"><i class="fa-solid fa-xmark"></i></button>
                     </span>
@@ -709,12 +733,14 @@ document.getElementById('btn-add-to-cart').addEventListener('click', () => {
     if (qty <= 0 || rate < 0) { alert("Please enter a valid quantity and rate."); return; }
 
     let amount = qty * rate;
+    let hasGST = !!itemExists.hasGST;
+
     const existingIndex = saleCart.findIndex(c => c.item === item && c.rate === rate);
     if (existingIndex !== -1) {
         saleCart[existingIndex].qty += qty;
         saleCart[existingIndex].amount += amount;
     } else {
-        saleCart.push({ item, qty, rate, amount });
+        saleCart.push({ item, qty, rate, amount, hasGST });
     }
     
     document.getElementById('sale-item').value = '';
@@ -747,11 +773,10 @@ saleForm.addEventListener('submit', async (e) => {
             const cartItem = saleCart[i];
             const newTransRef = doc(collection(db, "transactions"));
             const localInvItem = allInventory.find(inv => inv.name === cartItem.item);
-            const hasGST = localInvItem ? !!localInvItem.hasGST : false;
 
             batch.set(newTransRef, { 
                 type: "Sale", item: cartItem.item, qty: cartItem.qty, 
-                rate: cartItem.rate, amount: cartItem.amount, date: date, hasGST: hasGST 
+                rate: cartItem.rate, amount: cartItem.amount, date: date, hasGST: cartItem.hasGST 
             });
 
             if (localInvItem) {
@@ -808,6 +833,19 @@ cosmeticForm.addEventListener('submit', async (e) => {
     }
 });
 
+const purchaseQtyEl = document.getElementById('purchase-qty');
+const purchaseRateEl = document.getElementById('purchase-rate');
+const purchaseAmtEl = document.getElementById('purchase-amount');
+
+function calculatePurchaseAmount() {
+    let q = parseFloat(purchaseQtyEl.value) || 0;
+    let r = parseFloat(purchaseRateEl.value) || 0;
+    purchaseAmtEl.value = (q * r).toFixed(2);
+}
+
+if(purchaseQtyEl) purchaseQtyEl.addEventListener('input', calculatePurchaseAmount);
+if(purchaseRateEl) purchaseRateEl.addEventListener('input', calculatePurchaseAmount);
+
 const purchaseForm = document.getElementById('form-purchase');
 purchaseForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -819,26 +857,46 @@ purchaseForm.addEventListener('submit', async (e) => {
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
     submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
 
+    const dateVal = document.getElementById('purchase-date').value;
+    const supplier = document.getElementById('purchase-supplier').value.trim();
+    const invoice = document.getElementById('purchase-invoice').value.trim();
     const item = document.getElementById('purchase-item').value.trim();
+    const partNumber = document.getElementById('purchase-part').value.trim();
     let qty = parseInt(document.getElementById('purchase-qty').value);
+    let rate = parseFloat(document.getElementById('purchase-rate').value);
     let amount = parseFloat(document.getElementById('purchase-amount').value);
     const hasGST = document.getElementById('purchase-gst').checked;
-    const date = new Date().toISOString();
+    
+    let dateObj = new Date();
+    if (dateVal) {
+        const parts = dateVal.split('-');
+        dateObj = new Date(parts[0], parts[1]-1, parts[2]);
+    }
+    const dateStr = dateObj.toISOString();
 
     try {
         const batch = writeBatch(db);
         const transRef = doc(collection(db, "transactions"));
-        batch.set(transRef, { type: "Purchase", item, qty, amount, date, hasGST });
+        batch.set(transRef, { 
+            type: "Purchase", item, qty, rate, amount, date: dateStr, 
+            hasGST, supplier, invoice, partNumber 
+        });
 
         const localInvItem = allInventory.find(i => i.name === item);
         if (localInvItem) {
-            batch.update(doc(db, "inventory", localInvItem.id), { qty: Number(localInvItem.qty) + qty, hasGST });
+            batch.update(doc(db, "inventory", localInvItem.id), { 
+                qty: Number(localInvItem.qty) + qty, hasGST, 
+                partNumber: partNumber || localInvItem.partNumber 
+            });
         } else {
             const newInvRef = doc(collection(db, "inventory"));
-            batch.set(newInvRef, { name: item, qty: qty, price: qty>0?(amount/qty):0, hasGST });
+            batch.set(newInvRef, { 
+                name: item, qty: qty, price: rate, hasGST, partNumber 
+            });
         }
         await batch.commit();
         purchaseForm.reset();
+        document.getElementById('purchase-date').value = todayStr;
         showSuccessAnimation("Purchase Recorded!");
     } catch (e) { 
         console.error(e); alert("Error saving purchase.");
@@ -870,8 +928,9 @@ function renderInventoryTable() {
     const queryStr = currentInventorySearch.toLowerCase().trim();
     let filtered = allInventory.filter(item => {
         const itemName = (item.name || "").toLowerCase();
+        const itemPart = (item.partNumber || "").toLowerCase();
         const qty = Number(item.qty) || 0;
-        if (queryStr && !itemName.includes(queryStr)) return false;
+        if (queryStr && !itemName.includes(queryStr) && !itemPart.includes(queryStr)) return false;
         if (currentInventoryFilter === 'out' && qty !== 0) return false;
         if (currentInventoryFilter === 'low' && (qty === 0 || qty > 2)) return false;
         return true;
@@ -879,6 +938,7 @@ function renderInventoryTable() {
 
     filtered.forEach((item) => {
         const itemName = item.name || "Unknown";
+        const itemPart = item.partNumber ? `<span class="text-[10px] text-gray-400 block -mt-1">PN: ${item.partNumber}</span>` : '';
         const itemQty = Number(item.qty) || 0;
         const itemPrice = Number(item.price) || 0;
         const stockValue = itemQty * itemPrice;
@@ -894,6 +954,7 @@ function renderInventoryTable() {
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
             <td class="px-5 py-4">
                 <div class="font-medium text-gray-900 dark:text-white flex items-center">${itemName} ${gstBadge}</div>
+                ${itemPart}
             </td>
             <td class="px-5 py-4 text-right text-gray-900 dark:text-gray-100 font-medium">${itemQty}</td>
             <td class="px-5 py-4 text-right text-gray-900 dark:text-gray-100">₹${itemPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
@@ -901,7 +962,7 @@ function renderInventoryTable() {
             <td class="px-5 py-4 text-right">${badgeHtml}</td>
             <td class="px-5 py-4 text-right">
                 <div class="flex justify-end gap-2">
-                    <button class="btn-edit w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary dark:hover:text-primary transition-colors" data-id="${item.id}" data-name="${itemName}" data-qty="${itemQty}" data-price="${itemPrice}" data-gst="${item.hasGST ? 'true' : ''}" title="Edit">
+                    <button class="btn-edit w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary dark:hover:text-primary transition-colors" data-id="${item.id}" data-name="${itemName}" data-qty="${itemQty}" data-price="${itemPrice}" data-gst="${item.hasGST ? 'true' : ''}" data-part="${item.partNumber || ''}" title="Edit">
                         <i class="fa-solid fa-pen pointer-events-none text-xs"></i>
                     </button>
                     <button class="btn-delete w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-danger hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:border-red-800 transition-colors" data-id="${item.id}" title="Delete">
@@ -939,6 +1000,7 @@ const inventoryForm = document.getElementById('form-inventory');
 inventoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('inv-name').value.trim();
+    const partNumber = document.getElementById('inv-part').value.trim();
     let qty = parseInt(document.getElementById('inv-qty').value); 
     let price = parseFloat(document.getElementById('inv-price').value);
     const hasGST = document.getElementById('inv-gst').checked;
@@ -948,11 +1010,11 @@ inventoryForm.addEventListener('submit', async (e) => {
     
     const editId = inventoryForm.getAttribute('data-edit-id'); 
     if (editId) { 
-        await updateDoc(doc(db, "inventory", editId), { name, qty, price, hasGST }); 
+        await updateDoc(doc(db, "inventory", editId), { name, qty, price, hasGST, partNumber }); 
         resetInventoryForm(); 
         showSuccessAnimation("Item Updated!");
     } else { 
-        await addDoc(collection(db, "inventory"), { name, qty, price, hasGST }); 
+        await addDoc(collection(db, "inventory"), { name, qty, price, hasGST, partNumber }); 
         inventoryForm.reset(); 
         showSuccessAnimation("Item Added to Stock!");
     }
@@ -981,6 +1043,7 @@ document.querySelector('#table-inventory tbody').addEventListener('click', async
         document.getElementById('inv-qty').value = btnEdit.getAttribute('data-qty');
         document.getElementById('inv-price').value = btnEdit.getAttribute('data-price');
         document.getElementById('inv-gst').checked = !!btnEdit.getAttribute('data-gst');
+        document.getElementById('inv-part').value = btnEdit.getAttribute('data-part') || '';
         inventoryForm.setAttribute('data-edit-id', btnEdit.getAttribute('data-id'));
         document.getElementById('btn-inv-submit').innerText = "Update";
         document.getElementById('inv-form-title').innerText = `Edit item`;
@@ -1015,13 +1078,15 @@ document.getElementById('excel-file').addEventListener('change', async (e) => {
                 const name = row['particulars'] || row['Particulars'] || row['Name'] || row['name'];
                 const qtyStr = row['quantity'] || row['Quantity'] || row['qty'];
                 const rateStr = row['rate'] || row['Rate'] || row['price'];
+                const partStr = row['part'] || row['Part Number'] || row['PN'];
                 const gstVal = row['gst'] || row['GST'];
 
                 if(name && name.trim() !== '') {
                     const qty = Number(qtyStr) || 0;
                     const price = Number(rateStr) || 0;
                     const hasGST = (String(gstVal).toLowerCase() === 'yes' || String(gstVal).toLowerCase() === 'true');
-                    await addDoc(collection(db, "inventory"), { name: name.trim(), qty, price, hasGST });
+                    const partNumber = partStr ? String(partStr).trim() : '';
+                    await addDoc(collection(db, "inventory"), { name: name.trim(), qty, price, hasGST, partNumber });
                 }
             }
             showSuccessAnimation("Excel Successfully Imported!");
@@ -1055,14 +1120,16 @@ document.getElementById('btn-merge-dup').addEventListener('click', async () => {
                 mergeCount++;
                 let totalQty = 0; let totalPriceObj = 0; let hasGST = false;
                 let mainId = itemsMap[key][0].id;
+                let finalPartNumber = itemsMap[key][0].partNumber || '';
                 
                 itemsMap[key].forEach(i => {
                     let iQty = Number(i.qty) || 0; let iPrice = Number(i.price) || 0;
                     totalQty += iQty; totalPriceObj += (iQty * iPrice);
                     if (i.hasGST) hasGST = true;
+                    if (!finalPartNumber && i.partNumber) finalPartNumber = i.partNumber;
                 });
                 let avgPrice = totalQty > 0 ? (totalPriceObj / totalQty) : 0;
-                await updateDoc(doc(db, "inventory", mainId), { qty: totalQty, price: avgPrice, hasGST: hasGST });
+                await updateDoc(doc(db, "inventory", mainId), { qty: totalQty, price: avgPrice, hasGST: hasGST, partNumber: finalPartNumber });
                 
                 for(let i = 1; i < itemsMap[key].length; i++) {
                     await deleteDoc(doc(db, "inventory", itemsMap[key][i].id));
