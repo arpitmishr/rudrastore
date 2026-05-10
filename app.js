@@ -204,9 +204,11 @@ function stopDatabaseListeners() {
   if (unsubSuppliers) unsubSuppliers();
 }
 
+// --- START OF CRASH-PROOF PREDICTIVE SEARCH ---
 function setupPredictiveSearch(inputId, dropdownId, isSale) {
     const inputEl = document.getElementById(inputId);
     const dropdownEl = document.getElementById(dropdownId);
+    if (!inputEl || !dropdownEl) return;
 
     document.addEventListener('click', (e) => {
         if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
@@ -214,21 +216,24 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
         }
     });
 
-    inputEl.addEventListener('focus', () => renderDropdown());
+    inputEl.addEventListener('focus', renderDropdown);
     inputEl.addEventListener('input', () => {
         renderDropdown();
         if (isSale) {
-            const typedName = inputEl.value.trim().toLowerCase();
-            const foundItem = allInventory.find(item => item.name.toLowerCase() === typedName);
-            document.getElementById('sale-cost').value = foundItem ? foundItem.price : '';
+            const typedName = String(inputEl.value).trim().toLowerCase();
+            const foundItem = allInventory.find(item => String(item.name || "").toLowerCase() === typedName);
+            const costEl = document.getElementById('sale-cost');
+            if (costEl) costEl.value = foundItem ? (foundItem.price || 0) : '';
         }
     });
 
     function renderDropdown() {
-        const queryStr = inputEl.value.toLowerCase().trim();
+        const queryStr = String(inputEl.value).toLowerCase().trim();
         let filtered = allInventory;
+        
         if (queryStr) {
-            filtered = allInventory.filter(item => item.name.toLowerCase().includes(queryStr));
+            // Safely filter without crashing if an item name is missing
+            filtered = allInventory.filter(item => String(item.name || "").toLowerCase().includes(queryStr));
         }
 
         let html = '';
@@ -245,9 +250,9 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
             return;
         }
 
-        const grouped = { "🟢 In Stock": [], "🟠 Low Stock": [], "🔴 Out of Stock": [] };
+        const grouped = { "🟢 In Stock": [], "🟠 Low Stock": [], "🔴 Out of Stock":[] };
         filtered.forEach(item => {
-            const qty = Number(item.qty);
+            const qty = Number(item.qty) || 0;
             if (qty === 0) grouped["🔴 Out of Stock"].push(item);
             else if (qty <= 3) grouped["🟠 Low Stock"].push(item);
             else grouped["🟢 In Stock"].push(item);
@@ -257,17 +262,20 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
             if (items.length > 0) {
                 html += `<div class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700/80 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10 border-y border-gray-200 dark:border-gray-600">${category}</div>`;
                 items.forEach(item => {
-                    const priceStr = Number(item.price).toFixed(2);
+                    const priceStr = Number(item.price || 0).toFixed(2);
+                    const qtyStr = Number(item.qty || 0);
                     const gstAttr = item.hasGST ? 'true' : '';
                     const partAttr = item.partNumber || '';
+                    const safeName = item.name || "Unknown Item";
+                    
                     html += `
-                    <div class="px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center dropdown-item border-b border-gray-50 dark:border-gray-700 dark:last:border-0 transition-colors" data-name="${item.name}" data-price="${item.price}" data-gst="${gstAttr}" data-part="${partAttr}">
+                    <div class="px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center dropdown-item border-b border-gray-50 dark:border-gray-700 dark:last:border-0 transition-colors" data-name="${safeName}" data-price="${item.price || 0}" data-gst="${gstAttr}" data-part="${partAttr}">
                         <div class="flex flex-col">
-                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${item.name}</span>
+                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${safeName}</span>
                             ${partAttr ? `<span class="text-[10px] text-gray-400">PN: ${partAttr}</span>` : ''}
                         </div>
                         <div class="text-right">
-                            <span class="block text-xs text-gray-500 dark:text-gray-400">Stock: ${item.qty}</span>
+                            <span class="block text-xs text-gray-500 dark:text-gray-400">Stock: ${qtyStr}</span>
                             <span class="block text-xs font-bold text-primary">₹${priceStr}</span>
                         </div>
                     </div>`;
@@ -284,18 +292,22 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
             el.addEventListener('click', () => {
                 inputEl.value = el.getAttribute('data-name');
                 dropdownEl.classList.add('hidden');
+                
                 if (isSale) {
-                    document.getElementById('sale-cost').value = el.getAttribute('data-price');
+                    const costEl = document.getElementById('sale-cost');
+                    if (costEl) costEl.value = el.getAttribute('data-price');
                 } else {
-                    document.getElementById('purchase-gst').checked = !!el.getAttribute('data-gst');
-                    if (document.getElementById('purchase-part')) {
-                        document.getElementById('purchase-part').value = el.getAttribute('data-part') || '';
-                    }
+                    const gstEl = document.getElementById('purchase-gst');
+                    if (gstEl) gstEl.checked = !!el.getAttribute('data-gst');
+                    
+                    const partEl = document.getElementById('purchase-part');
+                    if (partEl) partEl.value = el.getAttribute('data-part') || '';
                 }
             });
         });
     }
 }
+// --- END OF CRASH-PROOF PREDICTIVE SEARCH ---
 
 function updateDashboardMetrics() {
     if (!allInventory || !allTransactions) return;
@@ -962,7 +974,7 @@ purchaseForm.onsubmit = async (e) => {
             });
         }
 
-        // Process all cart items
+        // Process all cart items safely
         for (let i = 0; i < purchaseCart.length; i++) {
             const cartItem = purchaseCart[i];
             
@@ -982,8 +994,11 @@ purchaseForm.onsubmit = async (e) => {
                 partNumber: cartItem.partNumber || ""
             });
 
-            // 2. Update or Create Inventory
-            const localInvItem = allInventory.find(inv => inv.name === cartItem.item);
+            // 2. Update or Create Inventory (CASE INSENSITIVE MATCH)
+            const localInvItem = allInventory.find(inv => 
+                String(inv.name || "").toLowerCase() === String(cartItem.item || "").toLowerCase()
+            );
+            
             if (localInvItem) {
                 let currentQty = Number(localInvItem.qty) || 0;
                 batch.update(doc(db, "inventory", localInvItem.id), { 
@@ -1003,6 +1018,7 @@ purchaseForm.onsubmit = async (e) => {
             }
         }
 
+      
         await batch.commit();
         
         // Reset everything
