@@ -283,8 +283,29 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">Build a cart, auto-deducts stock.</p>
                         
                         <form id="form-sale" class="space-y-4 relative">
+                           <form id="form-sale" class="space-y-4 relative">
+                            <!-- NEW CUSTOMER / SHOP SECTION -->
+                            <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl mb-4">
+                                <div class="relative mb-3">
+                                    <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">Customer / Shop Name (Type 'Cash' for normal)</label>
+                                    <input type="text" id="sale-customer" autocomplete="off" placeholder="Search shop name or GSTIN..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                    <div id="sale-customer-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-end">
+                                    <div class="flex-1">
+                                        <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">GSTIN</label>
+                                        <input type="text" id="sale-gstin" placeholder="Optional" class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all uppercase">
+                                    </div>
+                                    <div id="gst-indicator" class="hidden px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-md flex items-center gap-2">
+                                        <i class="fa-solid fa-file-invoice-dollar"></i> GST Party
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- INVENTORY ITEM SECTION -->
                             <div class="relative">
-                                <label class="block text-sm font-semibold mb-1">Select Item</label>
+                                <label class="block text-sm font-semibold mb-1">Select Item to add to Invoice</label>
                                 <input type="text" id="sale-item" autocomplete="off" placeholder="Type item name..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-success outline-none transition-all">
                                 <div id="sale-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
                                 </div>
@@ -299,7 +320,7 @@
                             <button type="button" id="btn-add-to-cart" class="w-full bg-warning hover:bg-yellow-500 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"><i class="fa-solid fa-plus"></i> Add to Cart</button>
                             
                             <div id="cart-container" class="hidden mt-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-inner">
-                                <h4 class="text-sm font-bold border-b border-gray-200 dark:border-gray-700 pb-2 mb-3">Current Cart</h4>
+                                <h4 class="text-sm font-bold border-b border-gray-200 dark:border-gray-700 pb-2 mb-3">Current Invoice Items</h4>
                                 <ul id="cart-list" class="space-y-2 text-sm max-h-48 overflow-y-auto pr-2"></ul>
                                 <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-end">
                                     <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">Grand Total</span>
@@ -307,7 +328,8 @@
                                 </div>
                             </div>
                             
-                            <button type="submit" id="btn-save-sale" class="w-full bg-success hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-md transition-all text-lg flex items-center justify-center gap-2 active:scale-95 mt-4"><i class="fa-solid fa-check-double"></i> Complete Checkout</button>
+                            <button type="submit" id="btn-save-sale" class="w-full bg-success hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-md transition-all text-lg flex items-center justify-center gap-2 active:scale-95 mt-4"><i class="fa-solid fa-check-double"></i> Generate Invoice & Save</button>
+                        </form>
                         </form>
                     </div>
 
