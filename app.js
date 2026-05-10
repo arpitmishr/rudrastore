@@ -760,20 +760,29 @@ document.getElementById('btn-add-to-cart').addEventListener('click', () => {
     updateCartUI();
 });
 
+// --- START OF SALES SAVE FIX ---
 const saleForm = document.getElementById('form-sale');
-saleForm.addEventListener('submit', async (e) => {
+// We use onsubmit to guarantee we overwrite any old duplicated events
+saleForm.onsubmit = async (e) => {
     e.preventDefault(); 
     const submitBtn = document.getElementById('btn-save-sale');
     if (submitBtn.disabled) return;
     
-    // Check pending item
+    // Check if user typed an item but forgot to click "Add to Cart"
     const pendingItem = document.getElementById('sale-item').value.trim();
-    if (pendingItem) document.getElementById('btn-add-to-cart').click();
-    if (saleCart.length === 0) { alert("No items in the cart to sell!"); return; }
+    if (pendingItem) {
+        document.getElementById('btn-add-to-cart').click();
+    }
+    
+    if (saleCart.length === 0) { 
+        alert("No items in the invoice to sell!"); 
+        return; 
+    }
 
-    // CUSTOMER DETAILS
-    let customerName = document.getElementById('sale-customer').value.trim();
-    let customerGstin = document.getElementById('sale-gstin').value.trim().toUpperCase();
+    // CUSTOMER DETAILS (Bulletproofed)
+    let customerInput = document.getElementById('sale-customer');
+    let customerName = customerInput ? customerInput.value.trim() : "Cash / Walk-in";
+    let customerGstin = document.getElementById('sale-gstin') ? document.getElementById('sale-gstin').value.trim().toUpperCase() : "";
     if (!customerName) customerName = "Cash / Walk-in";
 
     const originalBtnHTML = submitBtn.innerHTML;
@@ -788,8 +797,9 @@ saleForm.addEventListener('submit', async (e) => {
         // CREATE A MASTER INVOICE NUMBER
         const invoiceNo = "INV-" + Date.now().toString().slice(-6);
 
-        // Save new customer if it doesn't exist
-        const customerExists = allCustomers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+        // Safe check for existing customer to prevent crashes
+        const customerExists = allCustomers.find(c => c.name && c.name.toLowerCase() === customerName.toLowerCase());
+        
         if (!customerExists && customerName.toLowerCase() !== "cash" && customerName.toLowerCase() !== "cash / walk-in") {
             const newCustRef = doc(collection(db, "customers"));
             batch.set(newCustRef, {
@@ -799,52 +809,57 @@ saleForm.addEventListener('submit', async (e) => {
             });
         }
 
-        // Process Cart Items
+        // Process Cart Items safely
         for (let i = 0; i < saleCart.length; i++) {
             const cartItem = saleCart[i];
             const newTransRef = doc(collection(db, "transactions"));
             const localInvItem = allInventory.find(inv => inv.name === cartItem.item);
 
-            // Save transaction with Invoice No and Customer details
+            // Save transaction
             batch.set(newTransRef, { 
                 type: "Sale", 
                 item: cartItem.item, 
-                qty: cartItem.qty, 
-                rate: cartItem.rate, 
-                amount: cartItem.amount, 
+                qty: Number(cartItem.qty) || 0, 
+                rate: Number(cartItem.rate) || 0, 
+                amount: Number(cartItem.amount) || 0, 
                 date: date, 
-                hasGST: cartItem.hasGST,
-                invoiceNo: invoiceNo,         // Grouping under 1 invoice
-                customerName: customerName,   // Tagged customer
-                customerGstin: customerGstin  // Tagged GSTIN
+                hasGST: !!cartItem.hasGST,
+                invoiceNo: invoiceNo,
+                customerName: customerName,
+                customerGstin: customerGstin
             });
 
-            // Deduct stock
+            // Deduct stock safely
             if (localInvItem) {
-                let newQty = Number(localInvItem.qty) - cartItem.qty;
-                localInvItem.qty = newQty < 0 ? 0 : newQty; 
-                batch.update(doc(db, "inventory", localInvItem.id), { qty: localInvItem.qty });
+                let currentQty = Number(localInvItem.qty) || 0;
+                let newQty = currentQty - (Number(cartItem.qty) || 0);
+                if (newQty < 0) newQty = 0;
+                batch.update(doc(db, "inventory", localInvItem.id), { qty: newQty });
             }
         }
+        
         await batch.commit(); 
         
-        // Reset everything
+        // Reset everything on success
         saleCart = [];
         updateCartUI();
         saleForm.reset();
         document.getElementById('sale-cost').value = '';
-        document.getElementById('gst-indicator').classList.add('hidden');
-        showSuccessAnimation(`Invoice ${invoiceNo} Generated Successfully!`);
+        const gstIndicator = document.getElementById('gst-indicator');
+        if(gstIndicator) gstIndicator.classList.add('hidden');
+        
+        showSuccessAnimation(`Invoice ${invoiceNo} Generated!`);
         
     } catch (error) { 
-        console.error(error); 
-        alert("An error occurred while generating the invoice.");
+        console.error("Sales Save Error:", error); 
+        alert("Error saving sale: " + error.message);
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnHTML;
         submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
     }
-});
+};
+
 
 
 const cosmeticForm = document.getElementById('form-cosmetic');
@@ -892,29 +907,37 @@ function calculatePurchaseAmount() {
 if(purchaseQtyEl) purchaseQtyEl.addEventListener('input', calculatePurchaseAmount);
 if(purchaseRateEl) purchaseRateEl.addEventListener('input', calculatePurchaseAmount);
 
+// --- START OF PURCHASE SAVE FIX ---
 const purchaseForm = document.getElementById('form-purchase');
-purchaseForm.addEventListener('submit', async (e) => {
+// We use onsubmit to guarantee we overwrite any old duplicated events
+purchaseForm.onsubmit = async (e) => {
     e.preventDefault();
     const submitBtn = document.getElementById('btn-save-purchase');
     if (submitBtn.disabled) return;
 
-    // Push pending item to cart if user forgot
+    // Check if user typed an item but forgot to add to bill
     const pendingItem = document.getElementById('purchase-item').value.trim();
-    if (pendingItem) document.getElementById('btn-add-purchase-cart').click();
+    if (pendingItem) {
+        document.getElementById('btn-add-purchase-cart').click();
+    }
     
-    if (purchaseCart.length === 0) { alert("No items in the bill to save!"); return; }
+    if (purchaseCart.length === 0) { 
+        alert("No items in the bill to save!"); 
+        return; 
+    }
 
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving Purchase...`;
     submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
 
-    // Read Master Fields
+    // Read Master Fields safely
     const dateVal = document.getElementById('purchase-date').value;
-    const invoiceNo = document.getElementById('purchase-invoice').value.trim().toUpperCase();
-    let supplierName = document.getElementById('purchase-supplier').value.trim();
-    let supplierGstin = document.getElementById('purchase-gstin').value.trim().toUpperCase();
+    const invoiceNo = document.getElementById('purchase-invoice').value.trim().toUpperCase() || "N/A";
     
+    let supplierInput = document.getElementById('purchase-supplier');
+    let supplierName = supplierInput ? supplierInput.value.trim() : "Cash Purchase";
+    let supplierGstin = document.getElementById('purchase-gstin') ? document.getElementById('purchase-gstin').value.trim().toUpperCase() : "";
     if (!supplierName) supplierName = "Cash Purchase";
 
     let dateObj = new Date();
@@ -927,11 +950,16 @@ purchaseForm.addEventListener('submit', async (e) => {
     try {
         const batch = writeBatch(db);
 
-        // Save Supplier if new
-        const supplierExists = allSuppliers.find(s => s.name.toLowerCase() === supplierName.toLowerCase());
+        // Save Supplier if new safely
+        const supplierExists = allSuppliers.find(s => s.name && s.name.toLowerCase() === supplierName.toLowerCase());
+        
         if (!supplierExists && supplierName.toLowerCase() !== "cash" && supplierName.toLowerCase() !== "cash purchase") {
             const newSuppRef = doc(collection(db, "suppliers"));
-            batch.set(newSuppRef, { name: supplierName, gstin: supplierGstin, createdAt: dateStr });
+            batch.set(newSuppRef, { 
+                name: supplierName, 
+                gstin: supplierGstin, 
+                createdAt: dateStr 
+            });
         }
 
         // Process all cart items
@@ -943,33 +971,34 @@ purchaseForm.addEventListener('submit', async (e) => {
             batch.set(transRef, { 
                 type: "Purchase", 
                 item: cartItem.item, 
-                qty: cartItem.qty, 
-                rate: cartItem.rate, 
-                amount: cartItem.amount, 
+                qty: Number(cartItem.qty) || 0, 
+                rate: Number(cartItem.rate) || 0, 
+                amount: Number(cartItem.amount) || 0, 
                 date: dateStr, 
-                hasGST: cartItem.hasGST, 
+                hasGST: !!cartItem.hasGST, 
                 supplier: supplierName, 
                 supplierGstin: supplierGstin,
                 invoice: invoiceNo, 
-                partNumber: cartItem.partNumber 
+                partNumber: cartItem.partNumber || ""
             });
 
             // 2. Update or Create Inventory
             const localInvItem = allInventory.find(inv => inv.name === cartItem.item);
             if (localInvItem) {
+                let currentQty = Number(localInvItem.qty) || 0;
                 batch.update(doc(db, "inventory", localInvItem.id), { 
-                    qty: Number(localInvItem.qty) + cartItem.qty, 
-                    hasGST: cartItem.hasGST, 
-                    partNumber: cartItem.partNumber || localInvItem.partNumber 
+                    qty: currentQty + (Number(cartItem.qty) || 0), 
+                    hasGST: !!cartItem.hasGST, 
+                    partNumber: cartItem.partNumber || localInvItem.partNumber || ""
                 });
             } else {
                 const newInvRef = doc(collection(db, "inventory"));
                 batch.set(newInvRef, { 
                     name: cartItem.item, 
-                    qty: cartItem.qty, 
-                    price: cartItem.rate, // Set default sale price to purchase rate initially
-                    hasGST: cartItem.hasGST, 
-                    partNumber: cartItem.partNumber 
+                    qty: Number(cartItem.qty) || 0, 
+                    price: Number(cartItem.rate) || 0, 
+                    hasGST: !!cartItem.hasGST, 
+                    partNumber: cartItem.partNumber || ""
                 });
             }
         }
@@ -980,19 +1009,23 @@ purchaseForm.addEventListener('submit', async (e) => {
         purchaseCart = [];
         updatePurchaseCartUI();
         purchaseForm.reset();
-        document.getElementById('purchase-date').value = todayStr;
-        document.getElementById('purchase-gst-indicator').classList.add('hidden');
+        document.getElementById('purchase-date').value = new Date().toISOString().split('T')[0];
+        
+        const suppGstInd = document.getElementById('purchase-gst-indicator');
+        if(suppGstInd) suppGstInd.classList.add('hidden');
+        
         showSuccessAnimation("Complete Purchase Saved!");
 
     } catch (e) { 
-        console.error(e); 
-        alert("Error saving complete purchase.");
+        console.error("Purchase Save Error:", e); 
+        alert("Error saving purchase: " + e.message);
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnHTML;
         submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
     }
-});
+};
+
 
 
 
