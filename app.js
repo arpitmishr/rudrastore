@@ -23,8 +23,10 @@ window.getDoc = getDoc;
 
 let unsubInventory = null;
 let unsubTransactions = null;
+let unsubCustomers = null; // NEW
 let allTransactions = [];
 let allInventory = []; 
+let allCustomers = []; // NEW
 let myChartMonthly = null;
 let myChartABC = null;
 let myChartFSN = null;
@@ -118,6 +120,7 @@ onAuthStateChanged(auth, (user) => {
         startDatabaseListeners();
         setupPredictiveSearch('sale-item', 'sale-item-dropdown', true);
         setupPredictiveSearch('purchase-item', 'purchase-item-dropdown', false);
+        setupCustomerSearch(); // NEW
     } else {
         document.getElementById('login-container').style.display = 'flex';
         document.getElementById('app-container').style.display = 'none';
@@ -160,20 +163,17 @@ let currentInventorySearch = "";
 let currentInventoryFilter = "all";
 
 function startDatabaseListeners() {
-   unsubInventory = onSnapshot(collection(db, "inventory"), (snapshot) => {
-        allInventory = [];
+    // NEW: Listen to Customers Collection
+    unsubCustomers = onSnapshot(collection(db, "customers"), (snapshot) => {
+        allCustomers = [];
         snapshot.forEach((docSnap) => {
-            const item = docSnap.data();
-            item.id = docSnap.id;
-            allInventory.push(item);
+            const cust = docSnap.data();
+            cust.id = docSnap.id;
+            allCustomers.push(cust);
         });
-        updateInventoryStats();
-        renderInventoryTable();
-        if (document.getElementById('tab-analytics').classList.contains('active')) runAnalytics();
-        updateDashboardMetrics();
     });
 
-    unsubTransactions = onSnapshot(query(collection(db, "transactions"), orderBy("date", "desc")), (snapshot) => {
+   unsubInventory = onSnapshot(collection(db, "inventory"), (snapshot) => {
         allTransactions = [];
         snapshot.forEach((docSnap) => {
             const trans = docSnap.data();
@@ -192,6 +192,7 @@ function startDatabaseListeners() {
 function stopDatabaseListeners() {
     if (unsubInventory) unsubInventory();
     if (unsubTransactions) unsubTransactions();
+    if (unsubCustomers) unsubCustomers(); // NEW
 }
 
 function setupPredictiveSearch(inputId, dropdownId, isSale) {
@@ -756,29 +757,60 @@ saleForm.addEventListener('submit', async (e) => {
     const submitBtn = document.getElementById('btn-save-sale');
     if (submitBtn.disabled) return;
     
+    // Check pending item
     const pendingItem = document.getElementById('sale-item').value.trim();
     if (pendingItem) document.getElementById('btn-add-to-cart').click();
-    if (saleCart.length === 0) { alert("No items in the list to sell!"); return; }
+    if (saleCart.length === 0) { alert("No items in the cart to sell!"); return; }
+
+    // CUSTOMER DETAILS
+    let customerName = document.getElementById('sale-customer').value.trim();
+    let customerGstin = document.getElementById('sale-gstin').value.trim().toUpperCase();
+    if (!customerName) customerName = "Cash / Walk-in";
 
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing...`;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating Invoice...`;
     submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
 
     try {
         const batch = writeBatch(db);
         const date = new Date().toISOString();
+        
+        // CREATE A MASTER INVOICE NUMBER
+        const invoiceNo = "INV-" + Date.now().toString().slice(-6);
 
+        // Save new customer if it doesn't exist
+        const customerExists = allCustomers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+        if (!customerExists && customerName.toLowerCase() !== "cash" && customerName.toLowerCase() !== "cash / walk-in") {
+            const newCustRef = doc(collection(db, "customers"));
+            batch.set(newCustRef, {
+                name: customerName,
+                gstin: customerGstin,
+                createdAt: date
+            });
+        }
+
+        // Process Cart Items
         for (let i = 0; i < saleCart.length; i++) {
             const cartItem = saleCart[i];
             const newTransRef = doc(collection(db, "transactions"));
             const localInvItem = allInventory.find(inv => inv.name === cartItem.item);
 
+            // Save transaction with Invoice No and Customer details
             batch.set(newTransRef, { 
-                type: "Sale", item: cartItem.item, qty: cartItem.qty, 
-                rate: cartItem.rate, amount: cartItem.amount, date: date, hasGST: cartItem.hasGST 
+                type: "Sale", 
+                item: cartItem.item, 
+                qty: cartItem.qty, 
+                rate: cartItem.rate, 
+                amount: cartItem.amount, 
+                date: date, 
+                hasGST: cartItem.hasGST,
+                invoiceNo: invoiceNo,         // Grouping under 1 invoice
+                customerName: customerName,   // Tagged customer
+                customerGstin: customerGstin  // Tagged GSTIN
             });
 
+            // Deduct stock
             if (localInvItem) {
                 let newQty = Number(localInvItem.qty) - cartItem.qty;
                 localInvItem.qty = newQty < 0 ? 0 : newQty; 
@@ -786,20 +818,25 @@ saleForm.addEventListener('submit', async (e) => {
             }
         }
         await batch.commit(); 
+        
+        // Reset everything
         saleCart = [];
         updateCartUI();
         saleForm.reset();
         document.getElementById('sale-cost').value = '';
-        showSuccessAnimation("Standard Sale Recorded!");
+        document.getElementById('gst-indicator').classList.add('hidden');
+        showSuccessAnimation(`Invoice ${invoiceNo} Generated Successfully!`);
+        
     } catch (error) { 
         console.error(error); 
-        alert("An error occurred while saving the sale.");
+        alert("An error occurred while generating the invoice.");
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnHTML;
         submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
     }
 });
+
 
 const cosmeticForm = document.getElementById('form-cosmetic');
 cosmeticForm.addEventListener('submit', async (e) => {
@@ -1142,3 +1179,91 @@ document.getElementById('btn-merge-dup').addEventListener('click', async () => {
         console.error(err); alert("An error occurred during merge.");
     } finally { btn.innerHTML = ogText; btn.disabled = false; }
 });
+
+
+
+function setupCustomerSearch() {
+    const custInput = document.getElementById('sale-customer');
+    const gstinInput = document.getElementById('sale-gstin');
+    const dropdownEl = document.getElementById('sale-customer-dropdown');
+    const gstIndicator = document.getElementById('gst-indicator');
+
+
+    gstinInput.addEventListener('input', () => {
+        if(gstinInput.value.trim().length > 0) {
+            gstIndicator.classList.remove('hidden');
+        } else {
+            gstIndicator.classList.add('hidden');
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!custInput.contains(e.target) && !dropdownEl.contains(e.target)) {
+            dropdownEl.classList.add('hidden');
+        }
+    });
+
+    custInput.addEventListener('focus', renderCustDropdown);
+    custInput.addEventListener('input', () => {
+        renderCustDropdown();
+        // If they type cash, clear GST
+        if(custInput.value.trim().toLowerCase() === 'cash') {
+            gstinInput.value = '';
+            gstIndicator.classList.add('hidden');
+        }
+    });
+
+    function renderCustDropdown() {
+        const queryStr = custInput.value.toLowerCase().trim();
+        let filtered = allCustomers;
+        
+        if (queryStr) {
+            filtered = allCustomers.filter(c => 
+                (c.name && c.name.toLowerCase().includes(queryStr)) || 
+                (c.gstin && c.gstin.toLowerCase().includes(queryStr))
+            );
+        }
+
+        let html = '';
+        if (filtered.length === 0) {
+            if(queryStr && queryStr !== 'cash') {
+                html = `<div class="px-4 py-3 bg-indigo-50 text-indigo-700 cursor-pointer font-semibold text-sm hover:bg-indigo-600 hover:text-white transition-colors cust-dropdown-item" data-name="${custInput.value}" data-gstin="">
+                    <i class="fa-solid fa-plus mr-2"></i> Add new Customer/Shop: "${custInput.value}"
+                </div>`;
+            } else {
+                html = `<div class="p-3 text-sm text-gray-500 text-center">No matching shops found.</div>`;
+            }
+        } else {
+            html += `<div class="px-3 py-1.5 bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Saved Shops</div>`;
+            filtered.forEach(c => {
+                let gstinText = c.gstin ? `GSTIN: ${c.gstin}` : `No GSTIN`;
+                let icon = c.gstin ? `<i class="fa-solid fa-file-invoice-dollar text-indigo-500"></i>` : `<i class="fa-solid fa-user text-gray-400"></i>`;
+                html += `
+                <div class="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center cust-dropdown-item border-b border-gray-100" data-name="${c.name}" data-gstin="${c.gstin || ''}">
+                    <div class="flex items-center gap-3">
+                        ${icon}
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${c.name}</span>
+                            <span class="text-[10px] text-gray-500">${gstinText}</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+        
+        dropdownEl.innerHTML = html;
+        dropdownEl.classList.remove('hidden');
+
+        // Attach click events
+        dropdownEl.querySelectorAll('.cust-dropdown-item').forEach(el => {
+            el.addEventListener('click', () => {
+                custInput.value = el.getAttribute('data-name');
+                gstinInput.value = el.getAttribute('data-gstin');
+                dropdownEl.classList.add('hidden');
+                
+                // Trigger the GST badge check
+                gstinInput.dispatchEvent(new Event('input'));
+            });
+        });
+    }
+}
