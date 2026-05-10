@@ -225,6 +225,16 @@
 
             <div id="tab-analytics" class="tab max-w-7xl mx-auto">
                 <h1 class="text-2xl font-bold mb-6">Business Insights <i class="fa-solid fa-chart-pie text-purple-500 ml-2"></i></h1>
+                <!-- NEW GST REPORT EXPORT SECTION -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 border-l-4 border-l-success">
+                    <h3 class="text-lg font-bold mb-1"><i class="fa-solid fa-file-excel text-success mr-2"></i> Export GST Report (B2B & B2C)</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Download an Excel report containing Taxable Values, HSN, CGST, SGST, and IGST separated by Sales and Purchases.</p>
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Start Date</label><input type="date" id="gst-export-start" class="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">End Date</label><input type="date" id="gst-export-end" class="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
+                        <button id="btn-export-gst" class="bg-success hover:bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition active:scale-95"><i class="fa-solid fa-download mr-1"></i> Generate Excel File</button>
+                    </div>
+                </div>
                 
                 <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex flex-wrap gap-4 items-end">
                     <div><label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Start Date</label><input type="date" id="ana-start" class="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"></div>
@@ -282,20 +292,17 @@
                         <h3 class="text-xl font-bold mb-1">Standard Sale</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">Build a cart, auto-deducts stock.</p>
                         
-                        <form id="form-sale" class="space-y-4 relative">
-                           <form id="form-sale" class="space-y-4 relative">
-                            <!-- NEW CUSTOMER / SHOP SECTION -->
+                       <form id="form-sale" class="space-y-4 relative">
                             <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl mb-4">
                                 <div class="relative mb-3">
                                     <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">Customer / Shop Name (Type 'Cash' for normal)</label>
-                                    <input type="text" id="sale-customer" autocomplete="off" placeholder="Search shop name or GSTIN..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
-                                    <div id="sale-customer-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
-                                    </div>
+                                    <input type="text" id="sale-customer" autocomplete="off" placeholder="Search shop name or GSTIN..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                    <div id="sale-customer-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
                                 </div>
                                 <div class="flex gap-4 items-end">
                                     <div class="flex-1">
                                         <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">GSTIN</label>
-                                        <input type="text" id="sale-gstin" placeholder="Optional" class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all uppercase">
+                                        <input type="text" id="sale-gstin" placeholder="Optional" class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-indigo-200 dark:border-indigo-700 rounded-lg outline-none uppercase">
                                     </div>
                                     <div id="gst-indicator" class="hidden px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-md flex items-center gap-2">
                                         <i class="fa-solid fa-file-invoice-dollar"></i> GST Party
@@ -303,21 +310,35 @@
                                 </div>
                             </div>
 
-                            <!-- INVENTORY ITEM SECTION -->
                             <div class="relative">
-                                <label class="block text-sm font-semibold mb-1">Select Item to add to Invoice</label>
-                                <input type="text" id="sale-item" autocomplete="off" placeholder="Type item name..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-success outline-none transition-all">
-                                <div id="sale-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
-                                </div>
+                                <label class="block text-sm font-semibold mb-1">Select Item</label>
+                                <input type="text" id="sale-item" autocomplete="off" placeholder="Type item name..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none transition-all">
+                                <div id="sale-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-4">
-                                <div><label class="block text-sm font-semibold mb-1">Cost (₹)</label><input type="number" id="sale-cost" placeholder="Auto" readonly class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg opacity-70 cursor-not-allowed"></div>
-                                <div><label class="block text-sm font-semibold mb-1">Qty</label><input type="number" id="sale-qty" placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-success outline-none"></div>
+                                <div><label class="block text-sm font-semibold mb-1">Qty</label><input type="number" id="sale-qty" placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                                <div><label class="block text-sm font-semibold mb-1">Rate (₹)</label><input type="number" id="sale-rate" placeholder="0.00" step="0.01" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-success border border-gray-200 dark:border-gray-600 rounded-lg outline-none text-xl font-bold"></div>
                             </div>
-                            <div><label class="block text-sm font-semibold mb-1">Selling Rate (₹)</label><input type="number" id="sale-rate" placeholder="0.00" step="0.01" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-success placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-success outline-none text-xl font-bold"></div>
+
+                            <label class="flex items-center gap-2 mt-2">
+                                <input type="checkbox" id="sale-gst" class="w-4 h-4 text-success bg-gray-100 border-gray-300 rounded focus:ring-success">
+                                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Calculate GST for this Item</span>
+                            </label>
+
+                            <!-- NEW GST CALCULATION SECTION -->
+                            <div id="sale-tax-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <div><label class="block text-xs font-semibold mb-1">HSN Code</label><input type="text" id="sale-hsn" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                                <div><label class="block text-xs font-semibold mb-1">GST % Rate</label><select id="sale-gst-rate" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option selected value="18">18%</option><option value="28">28%</option></select></div>
+                                <div><label class="block text-xs font-semibold mb-1 text-primary">CGST (₹)</label><input type="number" step="0.01" id="sale-cgst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                                <div><label class="block text-xs font-semibold mb-1 text-primary">SGST (₹)</label><input type="number" step="0.01" id="sale-sgst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                                <div><label class="block text-xs font-semibold mb-1 text-primary">IGST (₹)</label><input type="number" step="0.01" id="sale-igst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                                <div><label class="block text-xs font-semibold mb-1 text-gray-500">Taxable Value (₹)</label><input type="number" step="0.01" id="sale-taxable" readonly class="w-full px-3 py-1.5 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded outline-none cursor-not-allowed"></div>
+                            </div>
+
+                            <div><label class="block text-sm font-semibold mb-1">Final Amount (Incl. Taxes)</label><input type="number" id="sale-amount" readonly class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg cursor-not-allowed font-bold"></div>
                             
-                            <button type="button" id="btn-add-to-cart" class="w-full bg-warning hover:bg-yellow-500 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"><i class="fa-solid fa-plus"></i> Add to Cart</button>
+                            <button type="button" id="btn-add-to-cart" class="w-full bg-warning hover:bg-yellow-500 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"><i class="fa-solid fa-plus"></i> Add Item to Invoice</button>
                             
                             <div id="cart-container" class="hidden mt-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-inner">
                                 <h4 class="text-sm font-bold border-b border-gray-200 dark:border-gray-700 pb-2 mb-3">Current Invoice Items</h4>
@@ -330,7 +351,8 @@
                             
                             <button type="submit" id="btn-save-sale" class="w-full bg-success hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-md transition-all text-lg flex items-center justify-center gap-2 active:scale-95 mt-4"><i class="fa-solid fa-check-double"></i> Generate Invoice & Save</button>
                         </form>
-                        </form>
+
+                        
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border-t-4 border-t-cosmetic border border-gray-100 dark:border-gray-700 relative overflow-hidden h-fit">
@@ -363,24 +385,22 @@
                         <div><h3 class="text-lg font-bold">New Inventory Arrival</h3><p class="text-xs text-gray-500 dark:text-gray-400">Log all necessary details for complete tracking.</p></div>
                     </div>
                    <form id="form-purchase" class="space-y-4 relative">
-                        
-                        <!-- NEW SUPPLIER / MASTER SECTION -->
                         <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl mb-4 space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Purchase Date</label><input type="date" id="purchase-date" required class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-red-200 dark:border-red-700 rounded-lg outline-none focus:ring-2 focus:ring-danger transition-all"></div>
-                                <div><label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Invoice / Bill No.</label><input type="text" id="purchase-invoice" required placeholder="E.g., INV-12345" class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-red-200 dark:border-red-700 rounded-lg outline-none focus:ring-2 focus:ring-danger transition-all uppercase"></div>
+                                <div><label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Purchase Date</label><input type="date" id="purchase-date" required class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none"></div>
+                                <div><label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Invoice / Bill No.</label><input type="text" id="purchase-invoice" required placeholder="INV-12345" class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none uppercase"></div>
                             </div>
 
                             <div class="relative">
-                                <label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Supplier Name (Type 'Cash' for local purchase)</label>
-                                <input type="text" id="purchase-supplier" autocomplete="off" required placeholder="Search supplier name or GSTIN..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-red-200 dark:border-red-700 rounded-lg focus:ring-2 focus:ring-danger outline-none transition-all">
-                                <div id="purchase-supplier-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
+                                <label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Supplier Name (Type 'Cash' for local)</label>
+                                <input type="text" id="purchase-supplier" autocomplete="off" required placeholder="Search supplier..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none transition-all">
+                                <div id="purchase-supplier-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100"></div>
                             </div>
 
                             <div class="flex gap-4 items-end">
                                 <div class="flex-1">
                                     <label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Supplier GSTIN</label>
-                                    <input type="text" id="purchase-gstin" placeholder="Optional" class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-red-200 dark:border-red-700 rounded-lg focus:ring-2 focus:ring-danger outline-none transition-all uppercase">
+                                    <input type="text" id="purchase-gstin" placeholder="Optional" class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none uppercase">
                                 </div>
                                 <div id="purchase-gst-indicator" class="hidden px-4 py-2 bg-danger text-white rounded-lg font-bold text-sm shadow-md flex items-center gap-2">
                                     <i class="fa-solid fa-file-invoice-dollar"></i> GST Party
@@ -388,30 +408,39 @@
                             </div>
                         </div>
 
-                        <!-- ITEM ENTRY SECTION -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="relative">
                                 <label class="block text-sm font-semibold mb-1">Item Name</label>
-                                <input type="text" id="purchase-item" autocomplete="off" placeholder="Search or create new..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-danger outline-none transition-all">
-                                <div id="purchase-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
+                                <input type="text" id="purchase-item" autocomplete="off" placeholder="Search or create new..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none transition-all">
+                                <div id="purchase-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100"></div>
                             </div>
-                            <div><label class="block text-sm font-semibold mb-1">Part Number (Optional)</label><input type="text" id="purchase-part" placeholder="E.g., PN-001" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-danger"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Part Number</label><input type="text" id="purchase-part" placeholder="E.g., PN-001" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label class="block text-sm font-semibold mb-1">Qty</label><input type="number" id="purchase-qty" placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-danger"></div>
-                            <div><label class="block text-sm font-semibold mb-1">Purchase Rate (₹)</label><input type="number" step="0.01" id="purchase-rate" placeholder="0.00" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-danger"></div>
-                            <div><label class="block text-sm font-semibold mb-1">Total (₹)</label><input type="number" id="purchase-amount" readonly placeholder="0.00" class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-danger border border-gray-200 dark:border-gray-600 rounded-lg font-bold outline-none cursor-not-allowed"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-semibold mb-1">Qty</label><input type="number" id="purchase-qty" placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
+                            <div><label class="block text-sm font-semibold mb-1">Rate (₹)</label><input type="number" step="0.01" id="purchase-rate" placeholder="0.00" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none text-xl font-bold"></div>
                         </div>
 
                         <label class="flex items-center gap-2 mt-2">
-                            <input type="checkbox" id="purchase-gst" class="w-4 h-4 text-danger bg-gray-100 border-gray-300 rounded focus:ring-danger dark:bg-gray-700 dark:border-gray-600">
-                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Item has GST</span>
+                            <input type="checkbox" id="purchase-gst" class="w-4 h-4 text-danger bg-gray-100 border-gray-300 rounded focus:ring-danger">
+                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Calculate GST for this Item</span>
                         </label>
 
-                        <button type="button" id="btn-add-purchase-cart" class="w-full bg-gray-800 dark:bg-gray-600 hover:bg-black dark:hover:bg-gray-500 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"><i class="fa-solid fa-arrow-down"></i> Add Item to Bill</button>
+                        <!-- NEW GST CALCULATION SECTION -->
+                        <div id="purchase-tax-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <div><label class="block text-xs font-semibold mb-1">HSN Code</label><input type="text" id="purchase-hsn" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                            <div><label class="block text-xs font-semibold mb-1">GST % Rate</label><select id="purchase-gst-rate" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option selected value="18">18%</option><option value="28">28%</option></select></div>
+                            <div><label class="block text-xs font-semibold mb-1 text-danger">CGST (₹)</label><input type="number" step="0.01" id="purchase-cgst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                            <div><label class="block text-xs font-semibold mb-1 text-danger">SGST (₹)</label><input type="number" step="0.01" id="purchase-sgst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                            <div><label class="block text-xs font-semibold mb-1 text-danger">IGST (₹)</label><input type="number" step="0.01" id="purchase-igst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
+                            <div><label class="block text-xs font-semibold mb-1 text-gray-500">Taxable Value (₹)</label><input type="number" step="0.01" id="purchase-taxable" readonly class="w-full px-3 py-1.5 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded outline-none cursor-not-allowed"></div>
+                        </div>
 
-                        <!-- CART DISPLAY -->
+                        <div><label class="block text-sm font-semibold mb-1">Final Amount (Incl. Taxes)</label><input type="number" id="purchase-amount" readonly class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-danger border border-gray-200 dark:border-gray-600 rounded-lg font-bold outline-none cursor-not-allowed"></div>
+
+                        <button type="button" id="btn-add-purchase-cart" class="w-full bg-gray-800 dark:bg-gray-600 hover:bg-black text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"><i class="fa-solid fa-arrow-down"></i> Add Item to Bill</button>
+
                         <div id="purchase-cart-container" class="hidden mt-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-inner">
                             <h4 class="text-sm font-bold border-b border-gray-200 dark:border-gray-700 pb-2 mb-3">Items in this Bill</h4>
                             <ul id="purchase-cart-list" class="space-y-2 text-sm max-h-48 overflow-y-auto pr-2"></ul>
@@ -423,6 +452,8 @@
 
                         <button type="submit" id="btn-save-purchase" class="w-full bg-danger hover:bg-red-600 text-white font-bold py-4 rounded-xl shadow-md transition-all active:scale-95 mt-4 text-lg flex items-center justify-center gap-2"><i class="fa-solid fa-boxes-packing"></i> Save Complete Purchase</button>
                     </form>
+
+                    
                 </div>
             </div>
 
