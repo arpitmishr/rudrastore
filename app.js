@@ -23,10 +23,13 @@ window.getDoc = getDoc;
 
 let unsubInventory = null;
 let unsubTransactions = null;
-let unsubCustomers = null; // NEW
+let unsubCustomers = null; 
+let unsubSuppliers = null; 
 let allTransactions = [];
 let allInventory = []; 
-let allCustomers = []; // NEW
+let allCustomers = []; 
+let allSuppliers = []; 
+let purchaseCart = []; 
 let myChartMonthly = null;
 let myChartABC = null;
 let myChartFSN = null;
@@ -120,7 +123,8 @@ onAuthStateChanged(auth, (user) => {
         startDatabaseListeners();
         setupPredictiveSearch('sale-item', 'sale-item-dropdown', true);
         setupPredictiveSearch('purchase-item', 'purchase-item-dropdown', false);
-        setupCustomerSearch(); // NEW
+        setupCustomerSearch(); 
+      setupSupplierSearch();
     } else {
         document.getElementById('login-container').style.display = 'flex';
         document.getElementById('app-container').style.display = 'none';
@@ -163,15 +167,19 @@ let currentInventorySearch = "";
 let currentInventoryFilter = "all";
 
 function startDatabaseListeners() {
-    // NEW: Listen to Customers Collection
+    // Customers Listener
     unsubCustomers = onSnapshot(collection(db, "customers"), (snapshot) => {
         allCustomers = [];
-        snapshot.forEach((docSnap) => {
-            const cust = docSnap.data();
-            cust.id = docSnap.id;
-            allCustomers.push(cust);
-        });
+        snapshot.forEach((doc) => { const c = doc.data(); c.id = doc.id; allCustomers.push(c); });
     });
+
+    // NEW: Suppliers Listener
+    unsubSuppliers = onSnapshot(collection(db, "suppliers"), (snapshot) => {
+        allSuppliers = [];
+        snapshot.forEach((doc) => { const s = doc.data(); s.id = doc.id; allSuppliers.push(s); });
+    });
+    
+  
 
    unsubInventory = onSnapshot(collection(db, "inventory"), (snapshot) => {
         allTransactions = [];
@@ -192,7 +200,8 @@ function startDatabaseListeners() {
 function stopDatabaseListeners() {
     if (unsubInventory) unsubInventory();
     if (unsubTransactions) unsubTransactions();
-    if (unsubCustomers) unsubCustomers(); // NEW
+    if (unsubCustomers) unsubCustomers(); 
+  if (unsubSuppliers) unsubSuppliers();
 }
 
 function setupPredictiveSearch(inputId, dropdownId, isSale) {
@@ -886,24 +895,28 @@ if(purchaseRateEl) purchaseRateEl.addEventListener('input', calculatePurchaseAmo
 const purchaseForm = document.getElementById('form-purchase');
 purchaseForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const submitBtn = purchaseForm.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('btn-save-purchase');
     if (submitBtn.disabled) return;
+
+    // Push pending item to cart if user forgot
+    const pendingItem = document.getElementById('purchase-item').value.trim();
+    if (pendingItem) document.getElementById('btn-add-purchase-cart').click();
+    
+    if (purchaseCart.length === 0) { alert("No items in the bill to save!"); return; }
 
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving Purchase...`;
     submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
 
+    // Read Master Fields
     const dateVal = document.getElementById('purchase-date').value;
-    const supplier = document.getElementById('purchase-supplier').value.trim();
-    const invoice = document.getElementById('purchase-invoice').value.trim();
-    const item = document.getElementById('purchase-item').value.trim();
-    const partNumber = document.getElementById('purchase-part').value.trim();
-    let qty = parseInt(document.getElementById('purchase-qty').value);
-    let rate = parseFloat(document.getElementById('purchase-rate').value);
-    let amount = parseFloat(document.getElementById('purchase-amount').value);
-    const hasGST = document.getElementById('purchase-gst').checked;
+    const invoiceNo = document.getElementById('purchase-invoice').value.trim().toUpperCase();
+    let supplierName = document.getElementById('purchase-supplier').value.trim();
+    let supplierGstin = document.getElementById('purchase-gstin').value.trim().toUpperCase();
     
+    if (!supplierName) supplierName = "Cash Purchase";
+
     let dateObj = new Date();
     if (dateVal) {
         const parts = dateVal.split('-');
@@ -913,36 +926,75 @@ purchaseForm.addEventListener('submit', async (e) => {
 
     try {
         const batch = writeBatch(db);
-        const transRef = doc(collection(db, "transactions"));
-        batch.set(transRef, { 
-            type: "Purchase", item, qty, rate, amount, date: dateStr, 
-            hasGST, supplier, invoice, partNumber 
-        });
 
-        const localInvItem = allInventory.find(i => i.name === item);
-        if (localInvItem) {
-            batch.update(doc(db, "inventory", localInvItem.id), { 
-                qty: Number(localInvItem.qty) + qty, hasGST, 
-                partNumber: partNumber || localInvItem.partNumber 
-            });
-        } else {
-            const newInvRef = doc(collection(db, "inventory"));
-            batch.set(newInvRef, { 
-                name: item, qty: qty, price: rate, hasGST, partNumber 
-            });
+        // Save Supplier if new
+        const supplierExists = allSuppliers.find(s => s.name.toLowerCase() === supplierName.toLowerCase());
+        if (!supplierExists && supplierName.toLowerCase() !== "cash" && supplierName.toLowerCase() !== "cash purchase") {
+            const newSuppRef = doc(collection(db, "suppliers"));
+            batch.set(newSuppRef, { name: supplierName, gstin: supplierGstin, createdAt: dateStr });
         }
+
+        // Process all cart items
+        for (let i = 0; i < purchaseCart.length; i++) {
+            const cartItem = purchaseCart[i];
+            
+            // 1. Create Transaction Ledger Entry
+            const transRef = doc(collection(db, "transactions"));
+            batch.set(transRef, { 
+                type: "Purchase", 
+                item: cartItem.item, 
+                qty: cartItem.qty, 
+                rate: cartItem.rate, 
+                amount: cartItem.amount, 
+                date: dateStr, 
+                hasGST: cartItem.hasGST, 
+                supplier: supplierName, 
+                supplierGstin: supplierGstin,
+                invoice: invoiceNo, 
+                partNumber: cartItem.partNumber 
+            });
+
+            // 2. Update or Create Inventory
+            const localInvItem = allInventory.find(inv => inv.name === cartItem.item);
+            if (localInvItem) {
+                batch.update(doc(db, "inventory", localInvItem.id), { 
+                    qty: Number(localInvItem.qty) + cartItem.qty, 
+                    hasGST: cartItem.hasGST, 
+                    partNumber: cartItem.partNumber || localInvItem.partNumber 
+                });
+            } else {
+                const newInvRef = doc(collection(db, "inventory"));
+                batch.set(newInvRef, { 
+                    name: cartItem.item, 
+                    qty: cartItem.qty, 
+                    price: cartItem.rate, // Set default sale price to purchase rate initially
+                    hasGST: cartItem.hasGST, 
+                    partNumber: cartItem.partNumber 
+                });
+            }
+        }
+
         await batch.commit();
+        
+        // Reset everything
+        purchaseCart = [];
+        updatePurchaseCartUI();
         purchaseForm.reset();
         document.getElementById('purchase-date').value = todayStr;
-        showSuccessAnimation("Purchase Recorded!");
+        document.getElementById('purchase-gst-indicator').classList.add('hidden');
+        showSuccessAnimation("Complete Purchase Saved!");
+
     } catch (e) { 
-        console.error(e); alert("Error saving purchase.");
+        console.error(e); 
+        alert("Error saving complete purchase.");
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnHTML;
         submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
     }
 });
+
+
 
 function updateInventoryStats() {
     let totalItems = allInventory.length;
@@ -1267,3 +1319,156 @@ function setupCustomerSearch() {
         });
     }
 }
+
+
+
+// --- PURCHASE SUPPLIER SEARCH LOGIC ---
+function setupSupplierSearch() {
+    const suppInput = document.getElementById('purchase-supplier');
+    const gstinInput = document.getElementById('purchase-gstin');
+    const dropdownEl = document.getElementById('purchase-supplier-dropdown');
+    const gstIndicator = document.getElementById('purchase-gst-indicator');
+
+    gstinInput.addEventListener('input', () => {
+        if(gstinInput.value.trim().length > 0) gstIndicator.classList.remove('hidden');
+        else gstIndicator.classList.add('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!suppInput.contains(e.target) && !dropdownEl.contains(e.target)) {
+            dropdownEl.classList.add('hidden');
+        }
+    });
+
+    suppInput.addEventListener('focus', renderSuppDropdown);
+    suppInput.addEventListener('input', () => {
+        renderSuppDropdown();
+        if(suppInput.value.trim().toLowerCase() === 'cash') {
+            gstinInput.value = '';
+            gstIndicator.classList.add('hidden');
+        }
+    });
+
+    function renderSuppDropdown() {
+        const queryStr = suppInput.value.toLowerCase().trim();
+        let filtered = allSuppliers;
+        
+        if (queryStr) {
+            filtered = allSuppliers.filter(s => 
+                (s.name && s.name.toLowerCase().includes(queryStr)) || 
+                (s.gstin && s.gstin.toLowerCase().includes(queryStr))
+            );
+        }
+
+        let html = '';
+        if (filtered.length === 0) {
+            if(queryStr && queryStr !== 'cash') {
+                html = `<div class="px-4 py-3 bg-red-50 text-red-700 cursor-pointer font-semibold text-sm hover:bg-red-600 hover:text-white transition-colors supp-dropdown-item" data-name="${suppInput.value}" data-gstin="">
+                    <i class="fa-solid fa-plus mr-2"></i> Add new Supplier: "${suppInput.value}"
+                </div>`;
+            } else {
+                html = `<div class="p-3 text-sm text-gray-500 text-center">No matching suppliers found.</div>`;
+            }
+        } else {
+            html += `<div class="px-3 py-1.5 bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Saved Suppliers</div>`;
+            filtered.forEach(s => {
+                let gstinText = s.gstin ? `GSTIN: ${s.gstin}` : `No GSTIN`;
+                let icon = s.gstin ? `<i class="fa-solid fa-file-invoice-dollar text-danger"></i>` : `<i class="fa-solid fa-truck text-gray-400"></i>`;
+                html += `
+                <div class="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center supp-dropdown-item border-b border-gray-100" data-name="${s.name}" data-gstin="${s.gstin || ''}">
+                    <div class="flex items-center gap-3">
+                        ${icon}
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${s.name}</span>
+                            <span class="text-[10px] text-gray-500">${gstinText}</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+        
+        dropdownEl.innerHTML = html;
+        dropdownEl.classList.remove('hidden');
+
+        dropdownEl.querySelectorAll('.supp-dropdown-item').forEach(el => {
+            el.addEventListener('click', () => {
+                suppInput.value = el.getAttribute('data-name');
+                gstinInput.value = el.getAttribute('data-gstin');
+                dropdownEl.classList.add('hidden');
+                gstinInput.dispatchEvent(new Event('input'));
+            });
+        });
+    }
+}
+
+// --- PURCHASE CART LOGIC ---
+function updatePurchaseCartUI() {
+    const cartContainer = document.getElementById('purchase-cart-container');
+    const cartList = document.getElementById('purchase-cart-list');
+    const cartTotal = document.getElementById('purchase-cart-total');
+    cartList.innerHTML = '';
+    let totalAmount = 0;
+
+    if (purchaseCart.length === 0) {
+        cartContainer.classList.add('hidden');
+    } else {
+        cartContainer.classList.remove('hidden');
+        purchaseCart.forEach((item, index) => {
+            totalAmount += item.amount;
+            let gstBadge = item.hasGST ? `<span class="bg-red-100 text-red-700 text-[10px] px-1 rounded ml-1 font-bold">GST</span>` : '';
+            let partText = item.partNumber ? `<span class="text-xs text-gray-400 ml-2">PN: ${item.partNumber}</span>` : '';
+            
+            cartList.innerHTML += `
+                <li class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                    <div class="flex flex-col">
+                        <span class="text-gray-800 dark:text-gray-200">${item.item} ${gstBadge} <b class="text-danger">(x${item.qty})</b></span>
+                        ${partText}
+                    </div>
+                    <span class="font-bold">₹${item.amount.toFixed(2)} 
+                        <button type="button" onclick="window.removePurchaseItem(${index})" class="text-danger hover:text-red-700 ml-3"><i class="fa-solid fa-xmark"></i></button>
+                    </span>
+                </li>`;
+        });
+    }
+    cartTotal.innerText = totalAmount.toFixed(2);
+}
+
+window.removePurchaseItem = function(index) {
+    purchaseCart.splice(index, 1);
+    updatePurchaseCartUI();
+};
+
+document.getElementById('btn-add-purchase-cart').addEventListener('click', () => {
+    const item = document.getElementById('purchase-item').value.trim();
+    const partNumber = document.getElementById('purchase-part').value.trim();
+    const qtyStr = document.getElementById('purchase-qty').value;
+    const rateStr = document.getElementById('purchase-rate').value;
+    const hasGST = document.getElementById('purchase-gst').checked;
+
+    if (!item || !qtyStr || !rateStr) { alert("Please fill Item Name, Qty, and Rate."); return; }
+
+    let qty = parseInt(qtyStr);
+    let rate = parseFloat(rateStr);
+    if (qty <= 0 || rate < 0) { alert("Valid quantity and rate required."); return; }
+
+    let amount = qty * rate;
+
+    // Check if it exists in cart to merge, otherwise push new
+    const existingIndex = purchaseCart.findIndex(c => c.item === item && c.rate === rate);
+    if (existingIndex !== -1) {
+        purchaseCart[existingIndex].qty += qty;
+        purchaseCart[existingIndex].amount += amount;
+    } else {
+        purchaseCart.push({ item, partNumber, qty, rate, amount, hasGST });
+    }
+    
+    // Clear item fields
+    document.getElementById('purchase-item').value = '';
+    document.getElementById('purchase-part').value = '';
+    document.getElementById('purchase-qty').value = '';
+    document.getElementById('purchase-rate').value = '';
+    document.getElementById('purchase-amount').value = '';
+    document.getElementById('purchase-gst').checked = false;
+    
+    updatePurchaseCartUI();
+});
