@@ -25,7 +25,7 @@ window.setDoc = setDoc;
 window.getDoc = getDoc;
 
 // ==========================================
-// 2. GLOBAL VARIABLES
+// 2. GLOBAL VARIABLES & STATE CODES
 // ==========================================
 let unsubInventory = null;
 let unsubTransactions = null;
@@ -38,7 +38,7 @@ let allCustomers = [];
 let allSuppliers =[];
 
 window.saleCart = [];
-window.purRows = []; // ERP Table rows state
+window.purRows = []; 
 
 let myChartMonthly = null;
 let myChartABC = null;
@@ -51,6 +51,17 @@ let globalYearFilter = "All";
 let lastMonthlyData = {};
 let lastAbcTotals = {};
 let lastFsnTotals = {};
+
+const STATE_CODES = {
+    "01": "Jammu & Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh",
+    "05": "Uttarakhand", "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh",
+    "10": "Bihar", "11": "Sikkim", "12": "Arunachal Pradesh", "13": "Nagaland", "14": "Manipur",
+    "15": "Mizoram", "16": "Tripura", "17": "Meghalaya", "18": "Assam", "19": "West Bengal",
+    "20": "Jharkhand", "21": "Odisha", "22": "Chhattisgarh", "23": "Madhya Pradesh", "24": "Gujarat",
+    "25": "Daman & Diu", "26": "Dadra & Nagar Haveli", "27": "Maharashtra", "29": "Karnataka",
+    "30": "Goa", "31": "Lakshadweep", "32": "Kerala", "33": "Tamil Nadu", "34": "Puducherry",
+    "35": "Andaman & Nicobar Islands", "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh"
+};
 
 // ==========================================
 // 3. INITIAL SETUP & UTILS
@@ -123,18 +134,56 @@ if (btnThemeToggle) {
     });
 }
 
+function injectStateSetting() {
+    const settingsContainer = document.querySelector('#tab-settings .space-y-6');
+    if (settingsContainer && !document.getElementById('business-state-card')) {
+        const card = document.createElement('div');
+        card.id = 'business-state-card';
+        card.className = 'bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-start md:items-center justify-between';
+        
+        let options = '<option value="">-- Select Your Business State --</option>';
+        for (const [code, name] of Object.entries(STATE_CODES)) {
+            options += `<option value="${code}">${code} - ${name}</option>`;
+        }
+        
+        card.innerHTML = `
+            <div class="mb-4 md:mb-0">
+                <h3 class="font-bold text-lg"><i class="fa-solid fa-map-location-dot text-success mr-2"></i> Business GST State</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Used to auto-calculate Local (CGST/SGST) vs Inter-State (IGST) tax based on party GSTIN.</p>
+            </div>
+            <select id="setting-my-state" class="w-full md:w-64 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:ring-2 focus:ring-success outline-none cursor-pointer shadow-sm">
+                ${options}
+            </select>
+        `;
+        
+        settingsContainer.insertBefore(card, settingsContainer.firstChild);
+        
+        const stateSelect = document.getElementById('setting-my-state');
+        stateSelect.value = localStorage.getItem('myStateCode') || '';
+        stateSelect.addEventListener('change', (e) => {
+            localStorage.setItem('myStateCode', e.target.value);
+            showSuccessAnimation("Business State Saved!");
+            if (typeof calcPurchaseTotals === 'function') calcPurchaseTotals();
+            const saleGstCheck = document.getElementById('sale-gst');
+            if (saleGstCheck && saleGstCheck.checked) saleGstCheck.dispatchEvent(new Event('input'));
+        });
+    }
+}
+
 // ==========================================
-// 4. AUTHENTICATION & TABS
+// 4. AUTHENTICATION & STRICT TAB FIXES
 // ==========================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById('login-container').style.display = 'none';
         document.getElementById('app-container').style.display = 'flex';
+        injectStateSetting();
         startDatabaseListeners();
         setupPredictiveSearch('sale-item', 'sale-item-dropdown', true);
         setupCustomerSearch();
         setupSupplierSearch(); 
         initPurchaseTable(); 
+        document.getElementById('btn-dashboard').click();
     } else {
         document.getElementById('login-container').style.display = 'flex';
         document.getElementById('app-container').style.display = 'none';
@@ -160,7 +209,16 @@ if(formLogin) {
 const btnLogout = document.getElementById('btn-logout');
 if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
 
-const tabs =['dashboard', 'transactions', 'analytics', 'sales', 'purchases', 'inventory', 'settings'];
+const tabs = ['dashboard', 'transactions', 'analytics', 'sales', 'purchases', 'inventory', 'settings'];
+
+tabs.forEach(t => {
+    const el = document.getElementById(`tab-${t}`);
+    if (el) {
+        el.classList.remove('flex', 'block', 'h-full', 'overflow-hidden');
+        el.style.display = 'none'; 
+    }
+});
+
 tabs.forEach(tab => {
     const btn = document.getElementById(`btn-${tab}`);
     if(btn) {
@@ -168,10 +226,26 @@ tabs.forEach(tab => {
             tabs.forEach(t => {
                 const tabEl = document.getElementById(`tab-${t}`);
                 const btnEl = document.getElementById(`btn-${t}`);
-                if(tabEl) tabEl.classList.remove('active');
+                if(tabEl) {
+                    tabEl.classList.remove('active');
+                    tabEl.style.display = 'none';
+                }
                 if(btnEl) btnEl.classList.remove('active');
             });
-            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            document.querySelectorAll('[id$="-dropdown"]').forEach(el => el.classList.add('hidden'));
+
+            const activeTab = document.getElementById(`tab-${tab}`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+                if (tab === 'purchases' || tab === 'sales') {
+                    activeTab.style.display = 'flex';
+                    activeTab.style.flexDirection = 'column';
+                } else {
+                    activeTab.style.display = 'block';
+                }
+            }
+            
             document.getElementById(`btn-${tab}`).classList.add('active');
             if(tab === 'analytics') setTimeout(runAnalytics, 10); 
         });
@@ -256,6 +330,7 @@ function attachSaleTaxLogic() {
     const sgstEl = document.getElementById(`sale-sgst`);
     const igstEl = document.getElementById(`sale-igst`);
     const amtEl = document.getElementById(`sale-amount`);
+    const gstinEl = document.getElementById('sale-gstin');
 
     function recalc() {
         let q = parseFloat(qtyEl?.value) || 0;
@@ -281,6 +356,12 @@ function attachSaleTaxLogic() {
         if(amtEl) amtEl.value = (taxVal + c + s + i).toFixed(2);
     }
 
+    if (gstinEl) {
+        gstinEl.addEventListener('input', () => {
+            if (gstCheck && gstCheck.checked) gstCheck.dispatchEvent(new Event('input'));
+        });
+    }
+
     [qtyEl, rateEl, gstCheck, gstRate].forEach(el => {
         if(!el) return;
         el.addEventListener('input', () => {
@@ -289,13 +370,30 @@ function attachSaleTaxLogic() {
             if(gstCheck?.checked) {
                 let rateVal = parseFloat(gstRate?.value) || 18;
                 let taxAmt = taxVal * (rateVal / 100);
-                if(cgstEl) cgstEl.value = (taxAmt / 2).toFixed(2);
-                if(sgstEl) sgstEl.value = (taxAmt / 2).toFixed(2);
-                if(igstEl) igstEl.value = '0.00';
+                
+                // Smart IGST vs CGST/SGST detection
+                const myState = localStorage.getItem('myStateCode') || '';
+                const custGstin = document.getElementById('sale-gstin')?.value.trim().toUpperCase() || '';
+                let isIgst = false;
+
+                if (myState && custGstin.length >= 2) {
+                    if (custGstin.substring(0, 2) !== myState) isIgst = true;
+                }
+
+                if (isIgst) {
+                    if(cgstEl) cgstEl.value = '0.00';
+                    if(sgstEl) sgstEl.value = '0.00';
+                    if(igstEl) igstEl.value = taxAmt.toFixed(2);
+                } else {
+                    if(cgstEl) cgstEl.value = (taxAmt / 2).toFixed(2);
+                    if(sgstEl) sgstEl.value = (taxAmt / 2).toFixed(2);
+                    if(igstEl) igstEl.value = '0.00';
+                }
             }
             recalc();
         });
     });
+
     [cgstEl, sgstEl, igstEl].forEach(el => {
         if(el) el.addEventListener('input', recalc);
     });
@@ -451,7 +549,13 @@ function setupCustomerSearch() {
             }
         } else {
             html += `<div class="px-3 py-1.5 bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Saved Shops</div>`;
+            
+            const seen = new Set();
             filtered.forEach(c => {
+                const cName = (c.name || "").trim().toLowerCase();
+                if(seen.has(cName)) return;
+                seen.add(cName);
+                
                 let gstinText = c.gstin ? `GSTIN: ${c.gstin}` : `No GSTIN`;
                 let icon = c.gstin ? `<i class="fa-solid fa-file-invoice-dollar text-indigo-500"></i>` : `<i class="fa-solid fa-user text-gray-400"></i>`;
                 html += `
@@ -497,6 +601,8 @@ function setupSupplierSearch() {
             } else {
                 badgeEl?.classList.add('hidden');
             }
+            // Trigger calculation to update IGST vs CGST dynamically
+            if(typeof calcPurchaseTotals === 'function') calcPurchaseTotals();
         });
     }
 
@@ -510,6 +616,7 @@ function setupSupplierSearch() {
         if(suppInput.value.trim().toLowerCase() === 'cash') {
             if(gstinInput) gstinInput.value = '';
             badgeEl?.classList.add('hidden');
+            if(typeof calcPurchaseTotals === 'function') calcPurchaseTotals();
         }
     });
 
@@ -535,7 +642,13 @@ function setupSupplierSearch() {
             }
         } else {
             html += `<div class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saved Suppliers</div>`;
+            
+            const seen = new Set();
             filtered.forEach(s => {
+                const sName = (s.name || "").trim().toLowerCase();
+                if(seen.has(sName)) return;
+                seen.add(sName);
+
                 let gstinText = s.gstin ? `GSTIN: ${s.gstin}` : `No GSTIN`;
                 let icon = s.gstin ? `<i class="fa-solid fa-file-invoice-dollar text-danger"></i>` : `<i class="fa-solid fa-truck text-gray-400"></i>`;
                 html += `
@@ -642,6 +755,8 @@ if(btnAddToCart) {
 // ==========================================
 // 10. NEW ERP PURCHASE TABLE LOGIC
 // ==========================================
+window.calcPurchaseTotals = calcPurchaseTotals;
+
 function initPurchaseTable() {
     const tbody = document.getElementById('pur-tbody');
     const gstMaster = document.getElementById('pur-gst-master');
@@ -652,10 +767,8 @@ function initPurchaseTable() {
 
     if(!tbody) return;
 
-    // Initialize with 1 empty row
     window.purRows = [{ id: Date.now(), item: '', hsn: '', qty: '', unit: 'Pcs', rate: '', gst: 18, taxable: 0, taxAmt: 0, total: 0 }];
     
-    // Global Toggles
     if(gstMaster) {
         gstMaster.addEventListener('change', () => {
             renderPurchaseTable(); 
@@ -667,7 +780,6 @@ function initPurchaseTable() {
         overrideMathToggle.addEventListener('change', calcPurchaseTotals);
     }
 
-    // Keyboard Shortcuts for table navigation
     tbody.addEventListener('keydown', (e) => {
         if(e.key === 'Enter' && e.ctrlKey) {
             e.preventDefault();
@@ -699,11 +811,9 @@ function initPurchaseTable() {
         });
     }
 
-    // Map Both Save buttons to process
     if(btnSave) btnSave.addEventListener('click', savePurchaseRecord);
     if(btnSavePrint) btnSavePrint.addEventListener('click', savePurchaseRecord);
 
-    // Create Predictive dropdown
     createTableDropdown();
     renderPurchaseTable();
 }
@@ -712,11 +822,9 @@ function createTableDropdown() {
     if(!document.getElementById('pur-table-dropdown')) {
         const div = document.createElement('div');
         div.id = 'pur-table-dropdown';
-        // Changed to Fixed positioning to fix scroll/lag bug
         div.className = 'hidden fixed z-[9999] w-64 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-xl max-h-48 overflow-y-auto text-sm';
         document.body.appendChild(div);
         
-        // Hide Dropdown intelligently on scrolls to prevent ghost overlays
         const tableContainer = document.querySelector('.erp-table-container');
         if(tableContainer) {
             tableContainer.addEventListener('scroll', () => div.classList.add('hidden'));
@@ -732,7 +840,6 @@ function renderPurchaseTable() {
     const tbody = document.getElementById('pur-tbody');
     const isGstActive = document.getElementById('pur-gst-master')?.checked ?? true;
     
-    // Hide/Show column headers
     document.querySelectorAll('.pur-gst-col').forEach(el => {
         el.style.display = isGstActive ? '' : 'none';
     });
@@ -766,7 +873,6 @@ function attachPurchaseRowListeners() {
     const tbody = document.getElementById('pur-tbody');
     const dropdown = document.getElementById('pur-table-dropdown');
 
-    // Input changes
     tbody.querySelectorAll('tr').forEach((tr) => {
         const index = parseInt(tr.getAttribute('data-index'));
         
@@ -810,7 +916,6 @@ function attachPurchaseRowListeners() {
         }
     });
 
-    // Close dropdown
     document.addEventListener('click', (e) => {
         if (!e.target.classList.contains('pur-inp-item') && !dropdown.contains(e.target)) {
             dropdown.classList.add('hidden');
@@ -843,7 +948,6 @@ function handleTablePredictiveSearch(inputEl, rowIndex) {
 
     dropdown.innerHTML = html;
     
-    // Fixed positioning mapping based on Viewport bounding rect.
     const rect = inputEl.getBoundingClientRect();
     dropdown.style.top = `${rect.bottom}px`;
     dropdown.style.left = `${rect.left}px`;
@@ -854,14 +958,12 @@ function handleTablePredictiveSearch(inputEl, rowIndex) {
         el.addEventListener('click', () => {
             window.purRows[rowIndex].item = el.getAttribute('data-name');
             window.purRows[rowIndex].hsn = el.getAttribute('data-hsn');
-            // Fill rate as reference
             if(!window.purRows[rowIndex].rate) window.purRows[rowIndex].rate = el.getAttribute('data-rate');
             window.purRows[rowIndex].gst = el.getAttribute('data-gst');
             
             dropdown.classList.add('hidden');
-            renderPurchaseTable(); // re-render to update inputs
+            renderPurchaseTable(); 
             
-            // Focus next input (qty)
             setTimeout(() => {
                 const trs = document.getElementById('pur-tbody').querySelectorAll('tr');
                 if(trs[rowIndex]) {
@@ -902,7 +1004,6 @@ function showSmartAssistant(itemName) {
 function addPurchaseRow() {
     window.purRows.push({ id: Date.now(), item: '', hsn: '', qty: '', unit: 'Pcs', rate: '', gst: 18, taxable: 0, taxAmt: 0, total: 0 });
     renderPurchaseTable();
-    // Focus new row's item input
     setTimeout(() => {
         const inputs = document.getElementById('pur-tbody').querySelectorAll('.pur-inp-item');
         if(inputs.length > 0) inputs[inputs.length - 1].focus();
@@ -921,7 +1022,6 @@ function calcRowValues(index) {
     row.taxAmt = isGstActive ? row.taxable * (g / 100) : 0;
     row.total = row.taxable + row.taxAmt;
 
-    // Fast visual update without full re-render
     const trs = document.getElementById('pur-tbody').querySelectorAll('tr');
     if(trs[index]) {
         const inputs = trs[index].querySelectorAll('input[readonly]');
@@ -949,19 +1049,43 @@ function calcPurchaseTotals() {
     let grandTotal = overrideMath ? grandRaw : Math.round(grandRaw);
     let roundOff = grandTotal - grandRaw;
 
+    // IGST vs CGST logic
+    const myState = localStorage.getItem('myStateCode') || '';
+    const suppGstin = document.getElementById('pur-gstin')?.value.trim().toUpperCase() || '';
+    let isIgst = false;
+    
+    if (myState && suppGstin.length >= 2) {
+        const suppState = suppGstin.substring(0, 2);
+        if (suppState !== myState) isIgst = true;
+    }
+
+    // Toggle Labels
+    document.querySelectorAll('.group-local').forEach(el => {
+        if(isIgst) { el.style.display = 'none'; el.classList.remove('flex', 'grid'); }
+        else { el.style.display = ''; } 
+    });
+    document.querySelectorAll('.group-inter').forEach(el => {
+        if(isIgst) { el.style.display = ''; el.classList.remove('hidden'); }
+        else { el.style.display = 'none'; el.classList.add('hidden'); }
+    });
+
     if (document.getElementById('pur-t-taxable')) {
         document.getElementById('pur-t-taxable').innerText = `₹${totalTaxable.toFixed(2)}`;
-        document.getElementById('pur-t-cgst').innerText = `₹${(totalTax / 2).toFixed(2)}`;
-        document.getElementById('pur-t-sgst').innerText = `₹${(totalTax / 2).toFixed(2)}`;
+        if (isIgst) {
+            const el = document.getElementById('pur-t-igst');
+            if (el) el.innerText = `₹${totalTax.toFixed(2)}`;
+        } else {
+            const cEl = document.getElementById('pur-t-cgst');
+            const sEl = document.getElementById('pur-t-sgst');
+            if (cEl) cEl.innerText = `₹${(totalTax / 2).toFixed(2)}`;
+            if (sEl) sEl.innerText = `₹${(totalTax / 2).toFixed(2)}`;
+        }
         document.getElementById('pur-t-round').innerText = `₹${roundOff.toFixed(2)}`;
         document.getElementById('pur-t-grand').innerText = `₹${grandTotal.toFixed(2)}`;
     }
 }
 
 async function savePurchaseRecord(e) {
-    // If the event targets the Save & Print button, you can track it here if necessary
-    // const isPrint = e.target.closest('#btn-pur-saveprint') !== null;
-    
     const btn = document.getElementById('btn-pur-save');
     if (btn.disabled) return;
 
@@ -976,6 +1100,13 @@ async function savePurchaseRecord(e) {
     let suppGstin = document.getElementById('pur-gstin')?.value.trim().toUpperCase() || "";
     let isGstActive = document.getElementById('pur-gst-master')?.checked ?? true;
 
+    // Check IGST
+    const myState = localStorage.getItem('myStateCode') || '';
+    let isIgst = false;
+    if (myState && suppGstin.length >= 2) {
+        if (suppGstin.substring(0, 2) !== myState) isIgst = true;
+    }
+
     const originalHTML = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
@@ -989,6 +1120,10 @@ async function savePurchaseRecord(e) {
             const transRef = doc(collection(db, "transactions"));
             const localInv = allInventory.find(inv => String(inv.name||"").toLowerCase() === String(r.item||"").toLowerCase());
             
+            let c = isIgst ? 0 : r.taxAmt / 2;
+            let s = isIgst ? 0 : r.taxAmt / 2;
+            let ig = isIgst ? r.taxAmt : 0;
+
             batch.set(transRef, { 
                 type: "Purchase", 
                 item: r.item.trim(), 
@@ -999,9 +1134,9 @@ async function savePurchaseRecord(e) {
                 hasGST: isGstActive && parseFloat(r.gst) > 0, 
                 hsn: r.hsn.trim(), 
                 taxable: r.taxable, 
-                cgst: r.taxAmt / 2, 
-                sgst: r.taxAmt / 2, 
-                igst: 0, 
+                cgst: c, 
+                sgst: s, 
+                igst: ig, 
                 supplier: suppName, 
                 supplierGstin: suppGstin, 
                 invoice: invNo 
@@ -1016,7 +1151,7 @@ async function savePurchaseRecord(e) {
                 batch.set(doc(collection(db, "inventory")), { 
                     name: r.item.trim(), 
                     qty: parseFloat(r.qty), 
-                    price: parseFloat(r.rate), // Average cost / rate
+                    price: parseFloat(r.rate), 
                     hasGST: isGstActive && parseFloat(r.gst) > 0, 
                     hsn: r.hsn.trim(), 
                     partNumber: "" 
@@ -1026,16 +1161,15 @@ async function savePurchaseRecord(e) {
         await batch.commit();
         
         try {
-            // Strictly check for existing supplier to prevent duplication
             const cleanSuppName = suppName.trim().toLowerCase();
-            const existingSupplier = allSuppliers.find(s => s.name && s.name.trim().toLowerCase() === cleanSuppName);
+            const existingSupplier = allSuppliers.find(sup => sup.name && sup.name.trim().toLowerCase() === cleanSuppName);
             
             if (!existingSupplier && cleanSuppName !== "cash" && cleanSuppName !== "cash purchase") {
+                allSuppliers.push({ name: suppName.trim(), gstin: suppGstin });
                 await addDoc(collection(db, "suppliers"), { name: suppName.trim(), gstin: suppGstin, createdAt: dateStr });
             }
         } catch (err) { console.warn("Supplier database check failed.", err); }
 
-        // Reset
         document.getElementById('btn-pur-reset').click();
         showSuccessAnimation(`Purchase Bill ${invNo !== 'N/A' ? invNo : ''} Saved!`);
         
@@ -1103,8 +1237,12 @@ if(saleForm) {
             await batch.commit(); 
             
             try {
-                if (!(window.allCustomers||[]).find(c => c.name && c.name.toLowerCase()===custName.toLowerCase()) && custName.toLowerCase() !== "cash" && custName.toLowerCase() !== "cash / walk-in") {
-                    await addDoc(collection(db, "customers"), { name: custName, gstin: custGstin, createdAt: date });
+                const cleanCustName = custName.trim().toLowerCase();
+                const existingCustomer = allCustomers.find(cu => cu.name && cu.name.trim().toLowerCase() === cleanCustName);
+
+                if (!existingCustomer && cleanCustName !== "cash" && cleanCustName !== "cash / walk-in") {
+                    allCustomers.push({ name: custName.trim(), gstin: custGstin });
+                    await addDoc(collection(db, "customers"), { name: custName.trim(), gstin: custGstin, createdAt: date });
                 }
             } catch (err) { console.warn("Customer database check failed.", err); }
             
