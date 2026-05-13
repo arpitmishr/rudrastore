@@ -2,16 +2,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, writeBatch, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// ==========================================
-// 1. FIREBASE CONFIGURATION
-// ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDM-FWxsSkNOCXdGbc5cQ5H1_jmGiBby10",
-  authDomain: "rudrastore-46f12.firebaseapp.com",
-  projectId: "rudrastore-46f12",
-  storageBucket: "rudrastore-46f12.firebasestorage.app",
-  messagingSenderId: "654233322525",
-  appId: "1:654233322525:web:7992c94a1b362f07cd72f4"
+    apiKey: "AIzaSyDM-FWxsSkNOCXdGbc5cQ5H1_jmGiBby10",
+    authDomain: "rudrastore-46f12.firebaseapp.com",
+    projectId: "rudrastore-46f12",
+    storageBucket: "rudrastore-46f12.firebasestorage.app",
+    messagingSenderId: "654233322525",
+    appId: "1:654233322525:web:7992c94a1b362f07cd72f4"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -24,9 +21,6 @@ window.collection = collection;
 window.setDoc = setDoc;
 window.getDoc = getDoc;
 
-// ==========================================
-// 2. GLOBAL VARIABLES
-// ==========================================
 let unsubInventory = null;
 let unsubTransactions = null;
 let unsubCustomers = null;
@@ -35,1624 +29,4908 @@ let unsubSuppliers = null;
 let allTransactions = [];
 let allInventory = [];
 let allCustomers = [];
-let allSuppliers =[];
+let allSuppliers = [];
 
 window.saleCart = [];
-window.purchaseCart =[];
 
+let globalYearFilter = "All";
 let myChartMonthly = null;
 let myChartABC = null;
 let myChartFSN = null;
 
 let currentInventorySearch = "";
 let currentInventoryFilter = "all";
-let globalYearFilter = "All";
 
 let lastMonthlyData = {};
 let lastAbcTotals = {};
 let lastFsnTotals = {};
 
-// ==========================================
-// 3. INITIAL SETUP & UTILS
-// ==========================================
-const todayStr = new Date().toISOString().split('T')[0];
-if(document.getElementById('filter-trans-start')) document.getElementById('filter-trans-start').value = todayStr;
-if(document.getElementById('filter-trans-end')) document.getElementById('filter-trans-end').value = todayStr;
-if(document.getElementById('purchase-date')) document.getElementById('purchase-date').value = todayStr;
+const LOCAL_STATE_CODE = "22";
 
-function showSuccessAnimation(msg = "Success!") {
-    const overlay = document.getElementById('success-overlay');
-    const card = document.getElementById('success-card');
-    const iconContainer = document.getElementById('success-icon-container');
+let todayDateObj = new Date();
+let todayIsoString = todayDateObj.toISOString();
+let todayStrArray = todayIsoString.split('T');
+let todayStr = todayStrArray[0];
+
+let filterTransStart = document.getElementById('filter-trans-start');
+if (filterTransStart) {
+    filterTransStart.value = todayStr;
+}
+
+let filterTransEnd = document.getElementById('filter-trans-end');
+if (filterTransEnd) {
+    filterTransEnd.value = todayStr;
+}
+
+let purDate = document.getElementById('pur-date');
+if (purDate) {
+    purDate.value = todayStr;
+}
+
+let gstExportStart = document.getElementById('gst-export-start');
+if (gstExportStart) {
+    gstExportStart.value = todayStr;
+}
+
+let gstExportEnd = document.getElementById('gst-export-end');
+if (gstExportEnd) {
+    gstExportEnd.value = todayStr;
+}
+
+let anaStart = document.getElementById('ana-start');
+if (anaStart) {
+    anaStart.value = todayStr;
+}
+
+let anaEnd = document.getElementById('ana-end');
+if (anaEnd) {
+    anaEnd.value = todayStr;
+}
+
+function showSuccessAnimation(messageString) {
+    let overlay = document.getElementById('success-overlay');
+    let card = document.getElementById('success-card');
     
-    if(!overlay || !card || !iconContainer) return;
+    if (!overlay) {
+        return;
+    }
+    if (!card) {
+        return;
+    }
 
-    document.getElementById('success-msg').innerText = msg;
+    let defaultMessage = "Success!";
+    let finalMessage = messageString;
+    
+    if (!finalMessage) {
+        finalMessage = defaultMessage;
+    }
+
+    let msgElement = document.getElementById('success-msg');
+    msgElement.innerText = finalMessage;
+
     overlay.classList.remove('hidden');
     void overlay.offsetWidth;
+    
     overlay.classList.remove('opacity-0');
-    overlay.classList.add('opacity-100', 'pointer-events-auto');
+    overlay.classList.add('opacity-100');
+    overlay.classList.add('pointer-events-auto');
+    
     card.classList.remove('scale-50');
     card.classList.add('scale-100');
-    iconContainer.style.animation = 'none';
-    void iconContainer.offsetWidth; 
-    iconContainer.style.animation = null;
     
-    setTimeout(() => {
-        overlay.classList.remove('opacity-100', 'pointer-events-auto');
-        overlay.classList.add('opacity-0', 'pointer-events-none');
+    setTimeout(function() {
+        overlay.classList.remove('opacity-100');
+        overlay.classList.remove('pointer-events-auto');
+        
+        overlay.classList.add('opacity-0');
+        overlay.classList.add('pointer-events-none');
+        
         card.classList.remove('scale-100');
         card.classList.add('scale-50');
-        setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+        
+        setTimeout(function() {
+            overlay.classList.add('hidden');
+        }, 300);
+        
     }, 2000);
 }
 
 function isYearMatch(dateStr) {
-    if (globalYearFilter === "All") return true;
-    if (!dateStr) return false;
-    return new Date(dateStr).getFullYear().toString() === globalYearFilter;
+    if (globalYearFilter === "All") {
+        return true;
+    }
+    if (!dateStr) {
+        return false;
+    }
+    
+    let dateObject = new Date(dateStr);
+    let fullYear = dateObject.getFullYear();
+    let yearString = fullYear.toString();
+    
+    if (yearString === globalYearFilter) {
+        return true;
+    }
+    
+    return false;
 }
 
-function updateYearDropdown(transactions) {
-    const selectEl = document.getElementById('global-year-filter');
-    if(!selectEl) return;
-    const currentVal = selectEl.value;
-    const years = new Set();
-    transactions.forEach(t => {
-        if(t.date) years.add(new Date(t.date).getFullYear().toString());
+function updateYearDropdown(transactionsArray) {
+    let selectEl = document.getElementById('global-year-filter');
+    
+    if (!selectEl) {
+        return;
+    }
+    
+    let currentVal = selectEl.value;
+    let yearsSet = new Set();
+    
+    for (let i = 0; i < transactionsArray.length; i++) {
+        let currentTransaction = transactionsArray[i];
+        let transactionDate = currentTransaction.date;
+        
+        if (transactionDate) {
+            let parsedDate = new Date(transactionDate);
+            let parsedYear = parsedDate.getFullYear();
+            let parsedYearString = parsedYear.toString();
+            yearsSet.add(parsedYearString);
+        }
+    }
+    
+    let htmlContent = `<option value="All">All Years</option>`;
+    let yearsArray = Array.from(yearsSet);
+    
+    yearsArray.sort(function(a, b) {
+        return b - a;
     });
-    let html = `<option value="All">All Years</option>`;
-    Array.from(years).sort((a,b) => b - a).forEach(year => { html += `<option value="${year}">${year}</option>`; });
-    selectEl.innerHTML = html;
-    if (years.has(currentVal) || currentVal === "All") selectEl.value = currentVal;
-    else { globalYearFilter = "All"; selectEl.value = "All"; }
+    
+    for (let j = 0; j < yearsArray.length; j++) {
+        let yearValue = yearsArray[j];
+        htmlContent += `<option value="${yearValue}">${yearValue}</option>`;
+    }
+    
+    selectEl.innerHTML = htmlContent;
+    
+    let hasCurrentVal = yearsSet.has(currentVal);
+    let isAllVal = currentVal === "All";
+    
+    if (hasCurrentVal || isAllVal) {
+        selectEl.value = currentVal;
+    } else {
+        selectEl.value = "All";
+    }
+    
+    globalYearFilter = selectEl.value;
 }
 
-const btnThemeToggle = document.getElementById('btn-theme-toggle');
+let btnThemeToggle = document.getElementById('btn-theme-toggle');
+
 if (btnThemeToggle) {
-    if (localStorage.getItem('theme') === 'dark') {
+    let currentTheme = localStorage.getItem('theme');
+    
+    if (currentTheme === 'dark') {
         document.body.classList.add('dark-mode');
         btnThemeToggle.innerText = "Switch to Light Mode";
     }
-    btnThemeToggle.addEventListener('click', () => {
+    
+    btnThemeToggle.addEventListener('click', function() {
         document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        btnThemeToggle.innerText = isDark ? "Switch to Light Mode" : "Switch to Dark Mode";
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        if(myChartMonthly) renderCharts(lastMonthlyData, lastAbcTotals, lastFsnTotals);
+        
+        let isDarkMode = document.body.classList.contains('dark-mode');
+        
+        if (isDarkMode) {
+            btnThemeToggle.innerText = "Switch to Light Mode";
+            localStorage.setItem('theme', 'dark');
+        } else {
+            btnThemeToggle.innerText = "Switch to Dark Mode";
+            localStorage.setItem('theme', 'light');
+        }
+        
+        if (myChartMonthly !== null) {
+            renderCharts(lastMonthlyData, lastAbcTotals, lastFsnTotals);
+        }
     });
 }
 
-// ==========================================
-// 4. AUTHENTICATION & TABS
-// ==========================================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, function(user) {
+    let loginContainer = document.getElementById('login-container');
+    let appContainer = document.getElementById('app-container');
+    
     if (user) {
-        document.getElementById('login-container').style.display = 'none';
-        document.getElementById('app-container').style.display = 'flex';
+        loginContainer.style.display = 'none';
+        appContainer.style.display = 'flex';
+        
         startDatabaseListeners();
-        setupPredictiveSearch('sale-item', 'sale-item-dropdown', true);
-        setupPredictiveSearch('purchase-item', 'purchase-item-dropdown', false);
+        setupPredictiveSearchSale();
         setupCustomerSearch();
-        setupSupplierSearch();
+        initERPGrid();
     } else {
-        document.getElementById('login-container').style.display = 'flex';
-        document.getElementById('app-container').style.display = 'none';
+        loginContainer.style.display = 'flex';
+        appContainer.style.display = 'none';
+        
         stopDatabaseListeners();
     }
 });
 
-const formLogin = document.getElementById('form-login');
-if(formLogin) {
-    formLogin.addEventListener('submit', async (e) => {
-        e.preventDefault();
+let formLogin = document.getElementById('form-login');
+
+if (formLogin) {
+    formLogin.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        let emailInput = document.getElementById('login-email');
+        let passwordInput = document.getElementById('login-password');
+        let emailValue = emailInput.value;
+        let passwordValue = passwordInput.value;
+        
         try {
-            await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value);
-            document.getElementById('login-error').style.display = 'none';
-            document.getElementById('form-login').reset();
+            await signInWithEmailAndPassword(auth, emailValue, passwordValue);
+            
+            let loginError = document.getElementById('login-error');
+            loginError.style.display = 'none';
+            formLogin.reset();
+            
         } catch (error) {
-            document.getElementById('login-error').style.display = 'block';
-            document.getElementById('login-error').innerText = "Error: Invalid Credentials.";
+            let loginError = document.getElementById('login-error');
+            loginError.style.display = 'block';
+            loginError.innerText = "Error: Invalid Credentials.";
         }
     });
 }
 
-const btnLogout = document.getElementById('btn-logout');
-if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
+let btnLogout = document.getElementById('btn-logout');
 
-const tabs =['dashboard', 'transactions', 'analytics', 'sales', 'purchases', 'inventory', 'settings'];
-tabs.forEach(tab => {
-    const btn = document.getElementById(`btn-${tab}`);
-    if(btn) {
-        btn.addEventListener('click', () => {
-            tabs.forEach(t => {
-                const tabEl = document.getElementById(`tab-${t}`);
-                const btnEl = document.getElementById(`btn-${t}`);
-                if(tabEl) tabEl.classList.remove('active');
-                if(btnEl) btnEl.classList.remove('active');
-            });
-            document.getElementById(`tab-${tab}`).classList.add('active');
-            document.getElementById(`btn-${tab}`).classList.add('active');
-            if(tab === 'analytics') setTimeout(runAnalytics, 10); 
+if (btnLogout) {
+    btnLogout.addEventListener('click', function() {
+        signOut(auth);
+    });
+}
+
+let tabsArray = [
+    'dashboard', 
+    'transactions', 
+    'analytics', 
+    'sales', 
+    'purchases', 
+    'inventory', 
+    'settings'
+];
+
+for (let i = 0; i < tabsArray.length; i++) {
+    let currentTabName = tabsArray[i];
+    let buttonElementId = `btn-${currentTabName}`;
+    let buttonElement = document.getElementById(buttonElementId);
+    
+    if (buttonElement) {
+        buttonElement.addEventListener('click', function() {
+            
+            for (let j = 0; j < tabsArray.length; j++) {
+                let iterTabName = tabsArray[j];
+                let tabElementId = `tab-${iterTabName}`;
+                let iterButtonElementId = `btn-${iterTabName}`;
+                
+                let tabElement = document.getElementById(tabElementId);
+                let iterButtonElement = document.getElementById(iterButtonElementId);
+                
+                if (tabElement) {
+                    tabElement.classList.remove('active');
+                }
+                
+                if (iterButtonElement) {
+                    iterButtonElement.classList.remove('active');
+                }
+            }
+            
+            let targetTabElement = document.getElementById(`tab-${currentTabName}`);
+            let targetButtonElement = document.getElementById(`btn-${currentTabName}`);
+            
+            targetTabElement.classList.add('active');
+            targetButtonElement.classList.add('active');
+            
+            if (currentTabName === 'analytics') {
+                setTimeout(function() {
+                    runAnalytics();
+                }, 50);
+            }
         });
     }
-});
+}
 
-const globalYearEl = document.getElementById('global-year-filter');
-if(globalYearEl) {
-    globalYearEl.addEventListener('change', (e) => {
-        globalYearFilter = e.target.value;
-        if (document.getElementById('dash-year-label')) {
-            document.getElementById('dash-year-label').innerText = `(${globalYearFilter === 'All' ? 'All Years' : globalYearFilter})`;
+let globalYearFilterDropdown = document.getElementById('global-year-filter');
+
+if (globalYearFilterDropdown) {
+    globalYearFilterDropdown.addEventListener('change', function(event) {
+        let selectedValue = event.target.value;
+        globalYearFilter = selectedValue;
+        
+        let dashYearLabel = document.getElementById('dash-year-label');
+        if (dashYearLabel) {
+            if (globalYearFilter === 'All') {
+                dashYearLabel.innerText = `(All Years)`;
+            } else {
+                dashYearLabel.innerText = `(${globalYearFilter})`;
+            }
         }
+        
         updateDashboardMetrics();
         renderTransactionsTable();
         renderDashboardTopItems();
-        if (document.getElementById('tab-analytics').classList.contains('active')) runAnalytics();
+        
+        let tabAnalytics = document.getElementById('tab-analytics');
+        if (tabAnalytics.classList.contains('active')) {
+            runAnalytics();
+        }
     });
 }
 
-// ==========================================
-// 5. DATABASE LISTENERS
-// ==========================================
 function startDatabaseListeners() {
-    unsubCustomers = onSnapshot(collection(db, "customers"), (snapshot) => {
-        allCustomers =[];
-        snapshot.forEach((doc) => { const c = doc.data(); c.id = doc.id; allCustomers.push(c); });
-    });
-
-    unsubSuppliers = onSnapshot(collection(db, "suppliers"), (snapshot) => {
-        allSuppliers =[];
-        snapshot.forEach((doc) => { const s = doc.data(); s.id = doc.id; allSuppliers.push(s); });
-    });
-
-    unsubInventory = onSnapshot(collection(db, "inventory"), (snapshot) => {
-        allInventory =[];
-        snapshot.forEach((docSnap) => {
-            const item = docSnap.data();
-            item.id = docSnap.id;
-            allInventory.push(item);
+    let customersCollection = collection(db, "customers");
+    unsubCustomers = onSnapshot(customersCollection, function(snapshot) {
+        let tempCustomers = [];
+        snapshot.forEach(function(documentSnapshot) {
+            let docData = documentSnapshot.data();
+            docData.id = documentSnapshot.id;
+            tempCustomers.push(docData);
         });
+        allCustomers = tempCustomers;
+    });
+
+    let suppliersCollection = collection(db, "suppliers");
+    unsubSuppliers = onSnapshot(suppliersCollection, function(snapshot) {
+        let tempSuppliers = [];
+        snapshot.forEach(function(documentSnapshot) {
+            let docData = documentSnapshot.data();
+            docData.id = documentSnapshot.id;
+            tempSuppliers.push(docData);
+        });
+        allSuppliers = tempSuppliers;
+    });
+
+    let inventoryCollection = collection(db, "inventory");
+    unsubInventory = onSnapshot(inventoryCollection, function(snapshot) {
+        let tempInventory = [];
+        snapshot.forEach(function(documentSnapshot) {
+            let docData = documentSnapshot.data();
+            docData.id = documentSnapshot.id;
+            tempInventory.push(docData);
+        });
+        allInventory = tempInventory;
+        
         updateInventoryStats();
         renderInventoryTable();
-        if (document.getElementById('tab-analytics')?.classList.contains('active')) runAnalytics();
         updateDashboardMetrics();
     });
 
-    unsubTransactions = onSnapshot(query(collection(db, "transactions"), orderBy("date", "desc")), (snapshot) => {
-        allTransactions =[];
-        snapshot.forEach((docSnap) => {
-            const trans = docSnap.data();
-            trans.id = docSnap.id; 
-            allTransactions.push(trans);
+    let transactionsCollection = collection(db, "transactions");
+    let transactionsQuery = query(transactionsCollection, orderBy("date", "desc"));
+    
+    unsubTransactions = onSnapshot(transactionsQuery, function(snapshot) {
+        let tempTransactions = [];
+        snapshot.forEach(function(documentSnapshot) {
+            let docData = documentSnapshot.data();
+            docData.id = documentSnapshot.id;
+            tempTransactions.push(docData);
         });
+        allTransactions = tempTransactions;
+        
         updateYearDropdown(allTransactions);
         renderTransactionsTable();
         updateDashboardMonths(allTransactions);
         renderDashboardTopItems();
         updateDashboardMetrics();
-        if (document.getElementById('tab-analytics')?.classList.contains('active')) runAnalytics();
     });
 }
 
 function stopDatabaseListeners() {
-    if (unsubInventory) unsubInventory();
-    if (unsubTransactions) unsubTransactions();
-    if (unsubCustomers) unsubCustomers(); 
-    if (unsubSuppliers) unsubSuppliers();
-}
-
-// ==========================================
-// 6. GST AUTO-CALCULATION LOGIC
-// ==========================================
-function attachTaxLogic(prefix) {
-    const qtyEl = document.getElementById(`${prefix}-qty`);
-    const rateEl = document.getElementById(`${prefix}-rate`);
-    const gstCheck = document.getElementById(`${prefix}-gst`);
-    const taxSec = document.getElementById(`${prefix}-tax-section`);
-    const taxableEl = document.getElementById(`${prefix}-taxable`);
-    const gstRate = document.getElementById(`${prefix}-gst-rate`);
-    const cgstEl = document.getElementById(`${prefix}-cgst`);
-    const sgstEl = document.getElementById(`${prefix}-sgst`);
-    const igstEl = document.getElementById(`${prefix}-igst`);
-    const amtEl = document.getElementById(`${prefix}-amount`);
-
-    function recalc() {
-        let q = parseFloat(qtyEl?.value) || 0;
-        let r = parseFloat(rateEl?.value) || 0;
-        let taxVal = q * r;
-        
-        if(taxableEl) taxableEl.value = taxVal.toFixed(2);
-
-        let c = 0, s = 0, i = 0;
-        
-        if(gstCheck?.checked) {
-            taxSec?.classList.remove('hidden');
-            c = parseFloat(cgstEl?.value) || 0;
-            s = parseFloat(sgstEl?.value) || 0;
-            i = parseFloat(igstEl?.value) || 0;
-        } else {
-            taxSec?.classList.add('hidden');
-            if(cgstEl) cgstEl.value = '0.00';
-            if(sgstEl) sgstEl.value = '0.00';
-            if(igstEl) igstEl.value = '0.00';
-        }
-        
-        if(amtEl) amtEl.value = (taxVal + c + s + i).toFixed(2);
+    if (unsubInventory !== null) {
+        unsubInventory();
     }
-
-    [qtyEl, rateEl, gstCheck, gstRate].forEach(el => {
-        if(!el) return;
-        el.addEventListener('input', () => {
-            let taxVal = (parseFloat(qtyEl?.value) || 0) * (parseFloat(rateEl?.value) || 0);
-            
-            if(gstCheck?.checked) {
-                let rateVal = parseFloat(gstRate?.value) || 18;
-                let taxAmt = taxVal * (rateVal / 100);
-                if(cgstEl) cgstEl.value = (taxAmt / 2).toFixed(2);
-                if(sgstEl) sgstEl.value = (taxAmt / 2).toFixed(2);
-                if(igstEl) igstEl.value = '0.00';
-            }
-            recalc();
-        });
-    });[cgstEl, sgstEl, igstEl].forEach(el => {
-        if(el) el.addEventListener('input', recalc);
-    });
+    if (unsubTransactions !== null) {
+        unsubTransactions();
+    }
+    if (unsubCustomers !== null) {
+        unsubCustomers();
+    }
+    if (unsubSuppliers !== null) {
+        unsubSuppliers();
+    }
 }
-attachTaxLogic('sale');
-attachTaxLogic('purchase');
 
-// ==========================================
-// 7. PREDICTIVE SEARCHES (Inventory)
-// ==========================================
-function setupPredictiveSearch(inputId, dropdownId, isSale) {
-    const inputEl = document.getElementById(inputId);
-    const dropdownEl = document.getElementById(dropdownId);
+function initERPGrid() {
+    let gstMasterCheckbox = document.getElementById('pur-gst-master');
+    let gstinInput = document.getElementById('pur-gstin');
+    let supplierDropdown = document.getElementById('pur-supplier');
+    let purchaseTable = document.getElementById('pur-table');
     
-    if (!inputEl || !dropdownEl) return;
+    let purchaseTbody = document.getElementById('pur-tbody');
+    purchaseTbody.innerHTML = '';
+    
+    addPurRow();
 
-    document.addEventListener('click', (e) => {
-        if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
-            dropdownEl.classList.add('hidden');
-        }
-    });
-
-    inputEl.addEventListener('focus', renderDropdown);
-    inputEl.addEventListener('input', () => {
-        renderDropdown();
-        if (isSale) {
-            const typedName = String(inputEl.value).trim().toLowerCase();
-            const foundItem = allInventory.find(item => String(item.name || "").toLowerCase() === typedName);
-            const costEl = document.getElementById('sale-cost');
-            if (costEl) costEl.value = foundItem ? (foundItem.price || 0) : '';
-        }
-    });
-
-    function renderDropdown() {
-        const queryStr = String(inputEl.value).toLowerCase().trim();
-        let filtered = allInventory;
-        
-        if (queryStr) {
-            filtered = allInventory.filter(item => String(item.name || "").toLowerCase().includes(queryStr));
-        }
-
-        let html = '';
-        if (filtered.length === 0) {
-            html = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">No inventory items found.</div>`;
-            if (!isSale && queryStr) {
-                html += `<div class="px-4 py-3 bg-danger/10 text-danger cursor-pointer font-semibold text-sm hover:bg-danger hover:text-white transition-colors dropdown-item" data-name="${inputEl.value}" data-price="0" data-gst="" data-part="" data-hsn="">
-                    <i class="fa-solid fa-plus mr-2"></i> Add as new item: "${inputEl.value}"
-                </div>`;
-            }
-            dropdownEl.innerHTML = html;
-            dropdownEl.classList.remove('hidden');
-            attachClicks();
-            return;
-        }
-
-        const grouped = { "🟢 In Stock":[], "🟠 Low Stock": [], "🔴 Out of Stock":[] };
-        filtered.forEach(item => {
-            const qty = Number(item.qty) || 0;
-            if (qty === 0) grouped["🔴 Out of Stock"].push(item);
-            else if (qty <= 3) grouped["🟠 Low Stock"].push(item);
-            else grouped["🟢 In Stock"].push(item);
+    if (gstMasterCheckbox) {
+        gstMasterCheckbox.addEventListener('change', function() {
+            runPurGridComputations();
         });
-
-        for (const[category, items] of Object.entries(grouped)) {
-            if (items.length > 0) {
-                html += `<div class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700/80 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10 border-y border-gray-200 dark:border-gray-600">${category}</div>`;
-                items.forEach(item => {
-                    const priceStr = Number(item.price || 0).toFixed(2);
-                    const qtyStr = Number(item.qty || 0);
-                    const gstAttr = item.hasGST ? 'true' : '';
-                    const partAttr = item.partNumber || '';
-                    const hsnAttr = item.hsn || '';
-                    const safeName = item.name || "Unknown Item";
-                    
-                    html += `
-                    <div class="px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-600/50 cursor-pointer flex justify-between items-center dropdown-item border-b border-gray-50 dark:border-gray-700 dark:last:border-0 transition-colors" data-name="${safeName}" data-price="${item.price || 0}" data-gst="${gstAttr}" data-part="${partAttr}" data-hsn="${hsnAttr}">
-                        <div class="flex flex-col">
-                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">${safeName}</span>
-                            <div class="flex gap-2">
-                                ${partAttr ? `<span class="text-[10px] text-gray-400">PN: ${partAttr}</span>` : ''}
-                                ${hsnAttr ? `<span class="text-[10px] text-indigo-400">HSN: ${hsnAttr}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-xs text-gray-500 dark:text-gray-400">Stock: ${qtyStr}</span>
-                            <span class="block text-xs font-bold text-primary">₹${priceStr}</span>
-                        </div>
-                    </div>`;
-                });
-            }
-        }
-        dropdownEl.innerHTML = html;
-        dropdownEl.classList.remove('hidden');
-        attachClicks();
     }
-
-    function attachClicks() {
-        dropdownEl.querySelectorAll('.dropdown-item').forEach(el => {
-            el.addEventListener('click', () => {
-                inputEl.value = el.getAttribute('data-name');
-                dropdownEl.classList.add('hidden');
-                
-                const prefix = isSale ? 'sale' : 'purchase';
-                const hsnEl = document.getElementById(`${prefix}-hsn`);
-                if(hsnEl) hsnEl.value = el.getAttribute('data-hsn');
-                
-                if (isSale) {
-                    const rateEl = document.getElementById('sale-rate');
-                    if (rateEl) {
-                        rateEl.value = el.getAttribute('data-price');
-                        rateEl.dispatchEvent(new Event('input')); // Trigger calc
+    
+    if (gstinInput) {
+        gstinInput.addEventListener('input', function() {
+            let rawValue = gstinInput.value;
+            if (!rawValue) {
+                rawValue = "";
+            }
+            
+            let trimmedValue = rawValue.trim();
+            let upperValue = trimmedValue.toUpperCase();
+            gstinInput.value = upperValue;
+            
+            let indicatorElement = document.getElementById('pur-gstin-status');
+            if (indicatorElement) {
+                if (upperValue.length >= 2) {
+                    indicatorElement.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+                } else {
+                    indicatorElement.innerHTML = '<i class="fa-solid fa-id-card"></i>';
+                }
+            }
+            
+            let supplyBadge = document.getElementById('pur-supply-badge');
+            if (supplyBadge) {
+                if (upperValue.length >= 2) {
+                    supplyBadge.classList.remove('hidden');
+                    supplyBadge.classList.remove('bg-warning/20');
+                    supplyBadge.classList.remove('text-warning');
+                    supplyBadge.classList.remove('border-warning');
+                    
+                    let statePrefix = upperValue.substring(0, 2);
+                    
+                    if (statePrefix === LOCAL_STATE_CODE) {
+                        supplyBadge.innerText = 'Intra-State Supply (CGST+SGST)';
+                        supplyBadge.className = "text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-indigo-400 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 block w-max";
+                        
+                        let interGroups = document.querySelectorAll('.group-inter');
+                        for (let i = 0; i < interGroups.length; i++) {
+                            interGroups[i].classList.add('hidden');
+                        }
+                        
+                        let localGroups = document.querySelectorAll('.group-local');
+                        for (let j = 0; j < localGroups.length; j++) {
+                            localGroups[j].classList.remove('hidden');
+                        }
+                        
+                    } else {
+                        supplyBadge.innerText = 'Inter-State Supply (IGST)';
+                        supplyBadge.className = "text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-purple-400 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 block w-max";
+                        
+                        let interGroups = document.querySelectorAll('.group-inter');
+                        for (let k = 0; k < interGroups.length; k++) {
+                            interGroups[k].classList.remove('hidden');
+                        }
+                        
+                        let localGroups = document.querySelectorAll('.group-local');
+                        for (let m = 0; m < localGroups.length; m++) {
+                            localGroups[m].classList.add('hidden');
+                        }
                     }
                 } else {
-                    const partEl = document.getElementById('purchase-part');
-                    if (partEl) partEl.value = el.getAttribute('data-part') || '';
+                    supplyBadge.classList.add('hidden');
                 }
-
-                const gstEl = document.getElementById(`${prefix}-gst`);
-                if(gstEl) {
-                    gstEl.checked = !!el.getAttribute('data-gst');
-                    gstEl.dispatchEvent(new Event('input')); // Trigger Tax visibility & calc
-                }
-            });
-        });
-    }
-}
-
-// ==========================================
-// 8. MASTER SEARCHES (Customer & Supplier)
-// ==========================================
-function setupCustomerSearch() {
-    const custInput = document.getElementById('sale-customer');
-    const gstinInput = document.getElementById('sale-gstin');
-    const dropdownEl = document.getElementById('sale-customer-dropdown');
-    const gstIndicator = document.getElementById('gst-indicator');
-
-    if(!custInput || !gstinInput) return;
-
-    gstinInput.addEventListener('input', () => {
-        if(gstinInput.value.trim().length > 0) gstIndicator.classList.remove('hidden');
-        else gstIndicator.classList.add('hidden');
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!custInput.contains(e.target) && !dropdownEl.contains(e.target)) dropdownEl.classList.add('hidden');
-    });
-
-    custInput.addEventListener('focus', renderCustDropdown);
-    custInput.addEventListener('input', () => {
-        renderCustDropdown();
-        if(custInput.value.trim().toLowerCase() === 'cash') {
-            gstinInput.value = '';
-            gstIndicator.classList.add('hidden');
-        }
-    });
-
-    function renderCustDropdown() {
-        const queryStr = custInput.value.toLowerCase().trim();
-        let filtered = allCustomers;
-        
-        if (queryStr) {
-            filtered = allCustomers.filter(c => 
-                (c.name && c.name.toLowerCase().includes(queryStr)) || 
-                (c.gstin && c.gstin.toLowerCase().includes(queryStr))
-            );
-        }
-
-        let html = '';
-        if (filtered.length === 0) {
-            if(queryStr && queryStr !== 'cash') {
-                html = `<div class="px-4 py-3 bg-indigo-50 text-indigo-700 cursor-pointer font-semibold text-sm hover:bg-indigo-600 hover:text-white transition-colors cust-dropdown-item" data-name="${custInput.value}" data-gstin="">
-                    <i class="fa-solid fa-plus mr-2"></i> Add new Customer: "${custInput.value}"
-                </div>`;
-            } else {
-                html = `<div class="p-3 text-sm text-gray-500 text-center">No matching shops found.</div>`;
             }
-        } else {
-            html += `<div class="px-3 py-1.5 bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Saved Shops</div>`;
-            filtered.forEach(c => {
-                let gstinText = c.gstin ? `GSTIN: ${c.gstin}` : `No GSTIN`;
-                let icon = c.gstin ? `<i class="fa-solid fa-file-invoice-dollar text-indigo-500"></i>` : `<i class="fa-solid fa-user text-gray-400"></i>`;
-                html += `
-                <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex justify-between items-center cust-dropdown-item border-b border-gray-100" data-name="${c.name}" data-gstin="${c.gstin || ''}">
-                    <div class="flex items-center gap-3">
-                        ${icon}
-                        <div class="flex flex-col">
-                            <span class="font-semibold text-sm text-gray-800">${c.name}</span>
-                            <span class="text-[10px] text-gray-500">${gstinText}</span>
-                        </div>
-                    </div>
-                </div>`;
-            });
-        }
-        
-        dropdownEl.innerHTML = html;
-        dropdownEl.classList.remove('hidden');
-
-        dropdownEl.querySelectorAll('.cust-dropdown-item').forEach(el => {
-            el.addEventListener('click', () => {
-                custInput.value = el.getAttribute('data-name');
-                gstinInput.value = el.getAttribute('data-gstin');
-                dropdownEl.classList.add('hidden');
-                gstinInput.dispatchEvent(new Event('input'));
-            });
-        });
-    }
-}
-
-function setupSupplierSearch() {
-    const suppInput = document.getElementById('purchase-supplier');
-    const gstinInput = document.getElementById('purchase-gstin');
-    const dropdownEl = document.getElementById('purchase-supplier-dropdown');
-    const gstIndicator = document.getElementById('purchase-gst-indicator');
-
-    if(!suppInput || !gstinInput) return;
-
-    gstinInput.addEventListener('input', () => {
-        if(gstinInput.value.trim().length > 0) gstIndicator.classList.remove('hidden');
-        else gstIndicator.classList.add('hidden');
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!suppInput.contains(e.target) && !dropdownEl.contains(e.target)) dropdownEl.classList.add('hidden');
-    });
-
-    suppInput.addEventListener('focus', renderSuppDropdown);
-    suppInput.addEventListener('input', () => {
-        renderSuppDropdown();
-        if(suppInput.value.trim().toLowerCase() === 'cash') {
-            gstinInput.value = '';
-            gstIndicator.classList.add('hidden');
-        }
-    });
-
-    function renderSuppDropdown() {
-        const queryStr = suppInput.value.toLowerCase().trim();
-        let filtered = allSuppliers;
-        
-        if (queryStr) {
-            filtered = allSuppliers.filter(s => 
-                (s.name && s.name.toLowerCase().includes(queryStr)) || 
-                (s.gstin && s.gstin.toLowerCase().includes(queryStr))
-            );
-        }
-
-        let html = '';
-        if (filtered.length === 0) {
-            if(queryStr && queryStr !== 'cash') {
-                html = `<div class="px-4 py-3 bg-red-50 text-red-700 cursor-pointer font-semibold text-sm hover:bg-red-600 hover:text-white transition-colors supp-dropdown-item" data-name="${suppInput.value}" data-gstin="">
-                    <i class="fa-solid fa-plus mr-2"></i> Add new Supplier: "${suppInput.value}"
-                </div>`;
-            } else {
-                html = `<div class="p-3 text-sm text-gray-500 text-center">No matching suppliers found.</div>`;
-            }
-        } else {
-            html += `<div class="px-3 py-1.5 bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Saved Suppliers</div>`;
-            filtered.forEach(s => {
-                let gstinText = s.gstin ? `GSTIN: ${s.gstin}` : `No GSTIN`;
-                let icon = s.gstin ? `<i class="fa-solid fa-file-invoice-dollar text-danger"></i>` : `<i class="fa-solid fa-truck text-gray-400"></i>`;
-                html += `
-                <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex justify-between items-center supp-dropdown-item border-b border-gray-100" data-name="${s.name}" data-gstin="${s.gstin || ''}">
-                    <div class="flex items-center gap-3">
-                        ${icon}
-                        <div class="flex flex-col">
-                            <span class="font-semibold text-sm text-gray-800">${s.name}</span>
-                            <span class="text-[10px] text-gray-500">${gstinText}</span>
-                        </div>
-                    </div>
-                </div>`;
-            });
-        }
-        
-        dropdownEl.innerHTML = html;
-        dropdownEl.classList.remove('hidden');
-
-        dropdownEl.querySelectorAll('.supp-dropdown-item').forEach(el => {
-            el.addEventListener('click', () => {
-                suppInput.value = el.getAttribute('data-name');
-                gstinInput.value = el.getAttribute('data-gstin');
-                dropdownEl.classList.add('hidden');
-                gstinInput.dispatchEvent(new Event('input'));
-            });
-        });
-    }
-}
-
-// ==========================================
-// 9. CART UIS & ADD ITEMS
-// ==========================================
-function updateCartUI() {
-    const cartContainer = document.getElementById('cart-container');
-    const cartList = document.getElementById('cart-list');
-    const cartTotal = document.getElementById('cart-total');
-    if(!cartContainer || !cartList) return;
-
-    cartList.innerHTML = '';
-    let totalAmount = 0;
-
-    if (!window.saleCart || window.saleCart.length === 0) {
-        cartContainer.classList.add('hidden');
-    } else {
-        cartContainer.classList.remove('hidden');
-        window.saleCart.forEach((item, index) => {
-            totalAmount += item.amount;
-            let gstBadge = item.hasGST ? `<span class="bg-indigo-100 text-indigo-700 text-[10px] px-1 rounded ml-1 font-bold">GST</span>` : '';
-            let taxDetails = item.hasGST ? `<span class="text-[10px] text-gray-400 block mt-0.5">HSN: ${item.hsn||'N/A'} | Taxable: ₹${Number(item.taxable||0).toFixed(2)} | Tax: ₹${Number(item.cgst+item.sgst+item.igst).toFixed(2)}</span>` : '';
             
-            cartList.innerHTML += `
-                <li class="py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-800 dark:text-gray-200">${item.item} ${gstBadge} <b class="text-primary">(x${item.qty})</b></span>
-                        <span class="font-bold">₹${Number(item.amount||0).toFixed(2)} 
-                            <button type="button" onclick="window.removeCartItem(${index})" class="text-danger hover:text-red-700 ml-3 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            runPurGridComputations();
+        });
+    }
+
+    let purInvInput = document.getElementById('pur-inv');
+    if (purInvInput) {
+        purInvInput.addEventListener('input', function(event) {
+            let inputValue = event.target.value;
+            let upperInput = inputValue.toUpperCase();
+            let trimmedInput = upperInput.trim();
+            event.target.value = trimmedInput;
+            
+            let doesExist = false;
+            for (let i = 0; i < allTransactions.length; i++) {
+                let transaction = allTransactions[i];
+                if (transaction.type === 'Purchase') {
+                    if (transaction.invoice) {
+                        let transactionInvoiceUpper = transaction.invoice.toUpperCase();
+                        if (transactionInvoiceUpper === trimmedInput) {
+                            doesExist = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            let warningElement = document.getElementById('pur-inv-warning');
+            if (warningElement) {
+                if (doesExist) {
+                    warningElement.style.display = 'flex';
+                } else {
+                    warningElement.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    let purManualOverride = document.getElementById('pur-manual-override');
+    if (purManualOverride) {
+        purManualOverride.addEventListener('change', function(event) {
+            let isManualChecked = event.target.checked;
+            
+            let readOnlyFields = document.querySelectorAll('.row-taxable, .row-taxval, .row-total');
+            for (let i = 0; i < readOnlyFields.length; i++) {
+                let field = readOnlyFields[i];
+                if (isManualChecked) {
+                    field.readOnly = false;
+                } else {
+                    field.readOnly = true;
+                }
+            }
+            
+            if (isManualChecked === false) {
+                runPurGridComputations();
+            }
+        });
+    }
+    
+    if (purchaseTable) {
+        purchaseTable.addEventListener('keydown', function(event) {
+            let pressedKey = event.key;
+            if (pressedKey === "Enter") {
+                event.preventDefault();
+                
+                let isCtrlPressed = event.ctrlKey;
+                if (isCtrlPressed) {
+                    addPurRow();
+                    return;
+                }
+
+                let allInputsNodeList = purchaseTable.querySelectorAll('input:not([disabled]):not([readonly])');
+                let allInputsArray = Array.from(allInputsNodeList);
+                let activeElement = document.activeElement;
+                let currentIndex = allInputsArray.indexOf(activeElement);
+                
+                if (currentIndex > -1) {
+                    let isShiftPressed = event.shiftKey;
+                    if (isShiftPressed) {
+                        if (currentIndex > 0) {
+                            let previousInput = allInputsArray[currentIndex - 1];
+                            previousInput.focus();
+                        }
+                    } else {
+                        let lastIndex = allInputsArray.length - 1;
+                        if (currentIndex < lastIndex) {
+                            let nextInput = allInputsArray[currentIndex + 1];
+                            nextInput.focus();
+                        } else {
+                            addPurRow();
+                        }
+                    }
+                }
+            }
+        });
+
+        purchaseTable.addEventListener('input', function(event) {
+            let targetElement = event.target;
+            let isQty = targetElement.classList.contains('row-qty');
+            let isRate = targetElement.classList.contains('row-rate');
+            let isGst = targetElement.classList.contains('row-gstp');
+            
+            if (isQty || isRate || isGst) {
+                runPurGridComputations();
+            }
+        });
+
+        purchaseTable.addEventListener('click', function(event) {
+            let targetElement = event.target;
+            let deleteButton = targetElement.closest('.btn-del-row');
+            
+            if (deleteButton) {
+                let parentRow = deleteButton.closest('.pur-row');
+                parentRow.remove();
+                
+                let remainingRows = document.querySelectorAll('.pur-row');
+                if (remainingRows.length === 0) {
+                    addPurRow();
+                }
+                
+                let indexColumns = document.querySelectorAll('.idx-col');
+                let indexArray = Array.from(indexColumns);
+                for (let i = 0; i < indexArray.length; i++) {
+                    let column = indexArray[i];
+                    column.innerText = i + 1;
+                }
+                
+                runPurGridComputations();
+            }
+        });
+    }
+
+    let btnPurReset = document.getElementById('btn-pur-reset');
+    if (btnPurReset) {
+        btnPurReset.addEventListener('click', function() {
+            resetERP();
+        });
+    }
+    
+    let btnPurSave = document.getElementById('btn-pur-save');
+    if (btnPurSave) {
+        btnPurSave.addEventListener('click', function() {
+            handleERPTransactionCommit(false);
+        });
+    }
+    
+    let btnPurSavePrint = document.getElementById('btn-pur-saveprint');
+    if (btnPurSavePrint) {
+        btnPurSavePrint.addEventListener('click', function() {
+            handleERPTransactionCommit(true);
+        });
+    }
+    
+    setupERPMasterPredictiveInputs();
+}
+
+function addPurRow() {
+    let tbodyElement = document.getElementById('pur-tbody');
+    let overrideCheckbox = document.getElementById('pur-manual-override');
+    let isManualFlag = false;
+    
+    if (overrideCheckbox) {
+        isManualFlag = overrideCheckbox.checked;
+    }
+    
+    let currentRowsNodeList = document.querySelectorAll('.pur-row');
+    let currentRowsCount = currentRowsNodeList.length;
+    let nextRowIndex = currentRowsCount + 1;
+    
+    let rowObject = document.createElement('tr');
+    rowObject.className = "pur-row transition-colors relative hover:bg-gray-50/50 dark:hover:bg-gray-800/80";
+    
+    let readOnlyAttribute = "";
+    if (isManualFlag === false) {
+        readOnlyAttribute = "readonly";
+    }
+    
+    let innerHtmlString = `
+        <td class="text-center text-[11px] font-bold text-gray-500 align-middle idx-col">${nextRowIndex}</td>
+        <td class="relative">
+            <input type="text" class="erp-input w-full row-item bg-transparent font-medium" placeholder="Start typing item..." autocomplete="off">
+            <div class="row-dropdown hidden absolute z-[70] top-full mt-0.5 left-0 w-[300px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-xl text-sm max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700 custom-scrollbar"></div>
+        </td>
+        <td><input type="text" class="erp-input w-full text-center row-hsn text-[12px] font-semibold" placeholder="--"></td>
+        <td><input type="number" step="0.001" class="erp-input w-full text-right row-qty text-[13px] text-gray-900 dark:text-gray-100 font-bold font-mono placeholder:font-sans placeholder-gray-300 bg-blue-50/20" placeholder="0"></td>
+        <td><input type="text" class="erp-input w-full text-center row-unit text-[11px]" value="PCS" placeholder="PCS"></td>
+        <td><input type="number" step="0.01" class="erp-input w-full text-right row-rate text-[13px] font-mono text-success placeholder-gray-300 font-bold bg-green-50/20" placeholder="0.00" min="0"></td>
+        <td class="pur-gst-col transition-all"><input type="number" step="1" class="erp-input w-full text-center row-gstp font-bold font-mono text-purple-700 bg-purple-50/20" placeholder="18" value="18"></td>
+        <td><input type="text" ${readOnlyAttribute} class="erp-input w-full text-right font-bold text-gray-500 font-mono bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 row-taxable"></td>
+        <td class="pur-gst-col transition-all"><input type="text" ${readOnlyAttribute} class="erp-input w-full text-right font-bold font-mono text-gray-400 bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 row-taxval"></td>
+        <td><input type="text" ${readOnlyAttribute} class="erp-input w-full text-right font-bold font-mono text-danger bg-red-50/40 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 row-total"></td>
+        <td class="text-center align-middle border-l dark:border-gray-700">
+            <button type="button" class="btn-del-row text-gray-400 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/30 h-6 w-6 rounded text-xs transition-colors"><i class="fa-solid fa-xmark"></i></button>
+        </td>
+    `;
+    
+    rowObject.innerHTML = innerHtmlString;
+    tbodyElement.appendChild(rowObject);
+    
+    let itemInputElement = rowObject.querySelector('.row-item');
+    let dropdownNodeElement = rowObject.querySelector('.row-dropdown');
+    
+    itemInputElement.addEventListener('focus', function() {
+        renderItemDropdown(itemInputElement, dropdownNodeElement, rowObject);
+    });
+    
+    itemInputElement.addEventListener('input', function() {
+        renderItemDropdown(itemInputElement, dropdownNodeElement, rowObject);
+    });
+    
+    itemInputElement.addEventListener('blur', function() {
+        setTimeout(function() {
+            dropdownNodeElement.classList.add('hidden');
+        }, 200);
+    });
+
+    itemInputElement.focus();
+    runPurGridComputations();
+}
+
+function runPurGridComputations() {
+    let overrideCheckboxElement = document.getElementById('pur-manual-override');
+    let isManualModeActive = false;
+    if (overrideCheckboxElement) {
+        isManualModeActive = overrideCheckboxElement.checked;
+    }
+    
+    let gstMasterCheckboxElement = document.getElementById('pur-gst-master');
+    let isMasterGstActive = false;
+    if (gstMasterCheckboxElement) {
+        isMasterGstActive = gstMasterCheckboxElement.checked;
+    }
+    
+    let gstinInputElement = document.getElementById('pur-gstin');
+    let gstinRawValue = "";
+    if (gstinInputElement) {
+        gstinRawValue = gstinInputElement.value;
+    }
+    
+    let gstinStringValue = String(gstinRawValue);
+    let gstinTrimmedValue = gstinStringValue.trim();
+    
+    let statePrefixString = gstinTrimmedValue.substring(0, 2);
+    let isLocalSupply = false;
+    
+    if (statePrefixString === LOCAL_STATE_CODE) {
+        isLocalSupply = true;
+    } else if (gstinTrimmedValue === "") {
+        isLocalSupply = true;
+    }
+
+    let totalTaxableAccumulator = 0;
+    let totalTaxAccumulator = 0;
+    let grandTotalAccumulator = 0;
+    let stateGstAccumulator = 0;
+    let centralGstAccumulator = 0;
+    let integratedGstAccumulator = 0;
+    
+    let allGstColumns = document.querySelectorAll('.pur-gst-col');
+    for (let i = 0; i < allGstColumns.length; i++) {
+        let columnElement = allGstColumns[i];
+        if (isMasterGstActive === false) {
+            columnElement.classList.add('opacity-40');
+            columnElement.classList.add('pointer-events-none');
+            columnElement.classList.add('grayscale');
+        } else {
+            columnElement.classList.remove('opacity-40');
+            columnElement.classList.remove('pointer-events-none');
+            columnElement.classList.remove('grayscale');
+        }
+    }
+
+    let allPurchaseRows = document.querySelectorAll('.pur-row');
+    
+    for (let j = 0; j < allPurchaseRows.length; j++) {
+        let currentRowElement = allPurchaseRows[j];
+        
+        let qtyInputElement = currentRowElement.querySelector('.row-qty');
+        let qtyRawValue = qtyInputElement.value;
+        let qtyFloatValue = parseFloat(qtyRawValue);
+        if (isNaN(qtyFloatValue)) {
+            qtyFloatValue = 0;
+        }
+        
+        let rateInputElement = currentRowElement.querySelector('.row-rate');
+        let rateRawValue = rateInputElement.value;
+        let rateFloatValue = parseFloat(rateRawValue);
+        if (isNaN(rateFloatValue)) {
+            rateFloatValue = 0;
+        }
+        
+        let rowTaxableValue = qtyFloatValue * rateFloatValue;
+        
+        let gstPercentageInputElement = currentRowElement.querySelector('.row-gstp');
+        let gstPercentageRawValue = gstPercentageInputElement.value;
+        let gstPercentageFloatValue = parseFloat(gstPercentageRawValue);
+        if (isNaN(gstPercentageFloatValue)) {
+            gstPercentageFloatValue = 0;
+        }
+
+        let currentRowTaxAmount = 0;
+        if (isMasterGstActive === true) {
+            let taxMultiplier = gstPercentageFloatValue / 100;
+            currentRowTaxAmount = rowTaxableValue * taxMultiplier;
+        }
+
+        let currentRowTotalAmount = rowTaxableValue + currentRowTaxAmount;
+
+        let taxableTargetInput = currentRowElement.querySelector('.row-taxable');
+        let taxValueTargetInput = currentRowElement.querySelector('.row-taxval');
+        let totalTargetInput = currentRowElement.querySelector('.row-total');
+
+        if (isManualModeActive === false) {
+            if (rowTaxableValue > 0) {
+                taxableTargetInput.value = rowTaxableValue.toFixed(2);
+            } else {
+                taxableTargetInput.value = "";
+            }
+            
+            if (currentRowTaxAmount > 0) {
+                taxValueTargetInput.value = currentRowTaxAmount.toFixed(2);
+            } else {
+                taxValueTargetInput.value = "";
+            }
+            
+            if (currentRowTotalAmount > 0) {
+                totalTargetInput.value = currentRowTotalAmount.toFixed(2);
+            } else {
+                totalTargetInput.value = "";
+            }
+        } else {
+            let manualTaxableRaw = taxableTargetInput.value;
+            let manualTaxableFloat = parseFloat(manualTaxableRaw);
+            if (isNaN(manualTaxableFloat)) {
+                manualTaxableFloat = 0;
+            }
+            rowTaxableValue = manualTaxableFloat;
+            
+            let manualTaxRaw = taxValueTargetInput.value;
+            let manualTaxFloat = parseFloat(manualTaxRaw);
+            if (isNaN(manualTaxFloat)) {
+                manualTaxFloat = 0;
+            }
+            currentRowTaxAmount = manualTaxFloat;
+            
+            let manualTotalRaw = totalTargetInput.value;
+            let manualTotalFloat = parseFloat(manualTotalRaw);
+            if (isNaN(manualTotalFloat)) {
+                manualTotalFloat = 0;
+            }
+            currentRowTotalAmount = manualTotalFloat;
+        }
+
+        totalTaxableAccumulator = totalTaxableAccumulator + rowTaxableValue;
+        totalTaxAccumulator = totalTaxAccumulator + currentRowTaxAmount;
+
+        if (isMasterGstActive === true) {
+            if (isLocalSupply === true) {
+                let halfTaxAmount = currentRowTaxAmount / 2;
+                centralGstAccumulator = centralGstAccumulator + halfTaxAmount;
+                stateGstAccumulator = stateGstAccumulator + halfTaxAmount;
+            } else {
+                integratedGstAccumulator = integratedGstAccumulator + currentRowTaxAmount;
+            }
+        }
+        
+        grandTotalAccumulator = grandTotalAccumulator + currentRowTotalAmount;
+    }
+
+    let preRoundCalculation = grandTotalAccumulator * 100;
+    let roundedPreCalculation = Math.round(preRoundCalculation);
+    let rawTotalsCalculation = roundedPreCalculation / 100;
+    
+    let finalRoundedGrandTotal = Math.round(rawTotalsCalculation);
+    let roundOffDifferenceAmount = finalRoundedGrandTotal - rawTotalsCalculation;
+
+    let targetTaxableDisplay = document.getElementById('pur-t-taxable');
+    if (targetTaxableDisplay) {
+        targetTaxableDisplay.innerText = "₹" + totalTaxableAccumulator.toFixed(2);
+    }
+    
+    let targetCgstDisplay = document.getElementById('pur-t-cgst');
+    if (targetCgstDisplay) {
+        targetCgstDisplay.innerText = "₹" + centralGstAccumulator.toFixed(2);
+    }
+    
+    let targetSgstDisplay = document.getElementById('pur-t-sgst');
+    if (targetSgstDisplay) {
+        targetSgstDisplay.innerText = "₹" + stateGstAccumulator.toFixed(2);
+    }
+    
+    let targetIgstDisplay = document.getElementById('pur-t-igst');
+    if (targetIgstDisplay) {
+        targetIgstDisplay.innerText = "₹" + integratedGstAccumulator.toFixed(2);
+    }
+    
+    let targetRoundDisplay = document.getElementById('pur-t-round');
+    if (targetRoundDisplay) {
+        let absRoundDifference = Math.abs(roundOffDifferenceAmount);
+        let fixedRoundDifference = absRoundDifference.toFixed(2);
+        
+        if (roundOffDifferenceAmount >= 0) {
+            targetRoundDisplay.innerText = "+ ₹" + fixedRoundDifference;
+        } else {
+            targetRoundDisplay.innerText = "- ₹" + fixedRoundDifference;
+        }
+    }
+    
+    let targetGrandTotalDisplay = document.getElementById('pur-t-grand');
+    if (targetGrandTotalDisplay) {
+        targetGrandTotalDisplay.innerText = "₹" + finalRoundedGrandTotal.toFixed(2);
+    }
+    
+    let validationToastElement = document.getElementById('pur-validation-toast');
+    if (validationToastElement) {
+        validationToastElement.innerText = "Values synced instantly ✓";
+        setTimeout(function() {
+            validationToastElement.innerText = "";
+        }, 1500);
+    }
+}
+
+function renderItemDropdown(inputElement, dropdownElement, rowElement) {
+    let rawInputValue = inputElement.value;
+    if (!rawInputValue) {
+        rawInputValue = "";
+    }
+    
+    let stringInputValue = String(rawInputValue);
+    let trimmedInputValue = stringInputValue.trim();
+    let lowerInputValue = trimmedInputValue.toLowerCase();
+    
+    let matchedItemsArray = [];
+    
+    for (let i = 0; i < allInventory.length; i++) {
+        let currentInventoryItem = allInventory[i];
+        let inventoryItemName = currentInventoryItem.name;
+        let stringItemName = String(inventoryItemName);
+        let lowerItemName = stringItemName.toLowerCase();
+        
+        let doesInclude = lowerItemName.includes(lowerInputValue);
+        if (doesInclude === true) {
+            matchedItemsArray.push(currentInventoryItem);
+        }
+    }
+    
+    let matchesCount = matchedItemsArray.length;
+    
+    if (matchesCount === 0) {
+        let noMatchHtml = `<div class="p-3 text-xs text-gray-500 italic text-center">Press Tab/Enter to input as newly discovered.</div>`;
+        dropdownElement.innerHTML = noMatchHtml;
+    } else {
+        let generatedHtmlContent = "";
+        
+        let maxDisplayCount = 8;
+        let currentDisplayCount = 0;
+        
+        for (let j = 0; j < matchedItemsArray.length; j++) {
+            if (currentDisplayCount >= maxDisplayCount) {
+                break;
+            }
+            
+            let matchedItem = matchedItemsArray[j];
+            
+            let itemName = matchedItem.name;
+            if (!itemName) {
+                itemName = "";
+            }
+            
+            let itemPrice = matchedItem.price;
+            if (!itemPrice) {
+                itemPrice = 0;
+            }
+            
+            let itemGstFlag = matchedItem.hasGST;
+            let itemGstString = "0";
+            if (itemGstFlag === true) {
+                itemGstString = "18";
+            }
+            
+            let itemHsn = matchedItem.hsn;
+            if (!itemHsn) {
+                itemHsn = "";
+            }
+            
+            let itemPartNumber = matchedItem.partNumber;
+            let itemPartString = "";
+            if (itemPartNumber) {
+                itemPartString = "PN: " + itemPartNumber;
+            }
+            
+            let itemQty = matchedItem.qty;
+            if (!itemQty) {
+                itemQty = 0;
+            }
+            
+            let itemHtmlBlock = `
+                <div class="p-2 cursor-pointer text-sm text-gray-800 dark:text-gray-100 dropdown-item-hover transition-colors font-medium select-pur-item-grid-sys border-b border-gray-100 dark:border-gray-700/40" 
+                    data-n="${itemName}" 
+                    data-p="${itemPrice}" 
+                    data-g="${itemGstString}" 
+                    data-hs="${itemHsn}">
+                    
+                    ${itemName} 
+                    <span class="float-right text-xs font-mono font-normal text-success">LPC: ₹${itemPrice}</span>
+                    <div class="text-[10px] text-gray-400 mt-0.5">${itemPartString} Stk: ${itemQty}</div>
+                </div>
+            `;
+            
+            generatedHtmlContent = generatedHtmlContent + itemHtmlBlock;
+            currentDisplayCount++;
+        }
+        
+        dropdownElement.innerHTML = generatedHtmlContent;
+        
+        let allDropdownButtons = dropdownElement.querySelectorAll('.select-pur-item-grid-sys');
+        
+        for (let k = 0; k < allDropdownButtons.length; k++) {
+            let dropdownButton = allDropdownButtons[k];
+            
+            dropdownButton.addEventListener('mousedown', function(event) {
+                event.preventDefault();
+                
+                let clickedName = this.getAttribute('data-n');
+                let clickedPrice = this.getAttribute('data-p');
+                let clickedGst = this.getAttribute('data-g');
+                let clickedHsn = this.getAttribute('data-hs');
+                
+                inputElement.value = clickedName;
+                
+                let targetRateInput = rowElement.querySelector('.row-rate');
+                let parsedPrice = parseFloat(clickedPrice);
+                
+                if (parsedPrice > 0) {
+                    targetRateInput.value = clickedPrice;
+                } else {
+                    targetRateInput.value = "";
+                }
+                
+                let targetGstInput = rowElement.querySelector('.row-gstp');
+                if (clickedGst) {
+                    targetGstInput.value = clickedGst;
+                } else {
+                    targetGstInput.value = "18";
+                }
+                
+                let targetHsnInput = rowElement.querySelector('.row-hsn');
+                if (clickedHsn) {
+                    targetHsnInput.value = clickedHsn;
+                } else {
+                    targetHsnInput.value = "";
+                }
+                
+                let currentRateValue = targetRateInput.value;
+                renderAssistant(clickedName, currentRateValue, rowElement);
+                
+                let targetQtyInput = rowElement.querySelector('.row-qty');
+                targetQtyInput.focus();
+                
+                dropdownElement.classList.add('hidden');
+                runPurGridComputations();
+            });
+        }
+    }
+    
+    dropdownElement.classList.remove('hidden');
+    
+    let activeRateInput = rowElement.querySelector('.row-rate');
+    let activeRateValue = activeRateInput.value;
+    
+    renderAssistant(lowerInputValue, activeRateValue, rowElement);
+}
+
+function renderAssistant(itemNameString, itemRateString, tableRowElement) {
+    let assistantBoxElement = document.getElementById('pur-smart-assistant');
+    if (!assistantBoxElement) {
+        return;
+    }
+    
+    let stringItemName = String(itemNameString);
+    let lowerItemName = stringItemName.toLowerCase();
+    let trimmedItemName = lowerItemName.trim();
+    
+    let existingInventoryItem = null;
+    
+    for (let i = 0; i < allInventory.length; i++) {
+        let currentItem = allInventory[i];
+        let currentItemName = currentItem.name;
+        let stringCurrentName = String(currentItemName);
+        let lowerCurrentName = stringCurrentName.toLowerCase();
+        let trimmedCurrentName = lowerCurrentName.trim();
+        
+        if (trimmedCurrentName === trimmedItemName) {
+            existingInventoryItem = currentItem;
+            break;
+        }
+    }
+    
+    if (existingInventoryItem === null) {
+        let newSkuHtml = `
+            <h4 class="text-[10px] font-bold uppercase text-gray-500 absolute top-2 left-3 tracking-widest">
+                <i class="fa-solid fa-seedling mr-1"></i> Line Assisstant
+            </h4>
+            <div class="mt-4 flex flex-col gap-1">
+                <p class="text-sm text-gray-800 dark:text-gray-100 font-medium">New SKU entry tracking initiated.</p>
+                <p class="text-[10px] text-gray-500">System will securely establish internal ledger references when transaction is committed.</p>
+            </div>
+        `;
+        assistantBoxElement.innerHTML = newSkuHtml;
+    } else {
+        let differencePercentage = 0;
+        let colorTagClass = 'text-warning';
+        
+        let lastPurchaseRate = existingInventoryItem.price;
+        let currentPurchaseRate = parseFloat(itemRateString);
+        if (isNaN(currentPurchaseRate)) {
+            currentPurchaseRate = 0;
+        }
+        
+        let trendString = '<i class="fa-solid fa-minus text-gray-400"></i> No Rate variance detected from Historical LPC Ledger data.';
+        
+        let isLastRateValid = lastPurchaseRate > 0;
+        let isCurrentRateValid = currentPurchaseRate > 0;
+        
+        if (isLastRateValid === true) {
+            if (isCurrentRateValid === true) {
+                let rateDifference = currentPurchaseRate - lastPurchaseRate;
+                let rateRatio = rateDifference / lastPurchaseRate;
+                let percentageValue = rateRatio * 100;
+                
+                differencePercentage = percentageValue;
+                
+                if (differencePercentage > 0.5) {
+                    let fixedPercentage = differencePercentage.toFixed(1);
+                    trendString = `<i class="fa-solid fa-arrow-trend-up text-danger mr-1 animate-pulse"></i> Attention: Unit acquisition rate spiked <b>${fixedPercentage}%</b> over recent LPC marker.`;
+                    colorTagClass = 'text-danger';
+                } else if (differencePercentage < -0.5) {
+                    trendString = `<i class="fa-solid fa-arrow-trend-down text-success mr-1"></i> Efficiency tracking logic logs drop yielding cost reduction!`;
+                    colorTagClass = 'text-success';
+                }
+            }
+        }
+
+        let existingItemName = existingInventoryItem.name;
+        let existingItemPrice = existingInventoryItem.price;
+        let parsedExistingPrice = parseFloat(existingItemPrice);
+        let fixedExistingPrice = parsedExistingPrice.toFixed(2);
+
+        let liveDbHtml = `
+            <h4 class="text-[10px] font-bold uppercase text-indigo-400 absolute top-2 left-3 tracking-widest">
+                <i class="fa-solid fa-database mr-1 text-primary"></i> Live Tnx DB
+            </h4>
+            <div class="mt-4 w-full">
+                <div class="flex justify-between items-center text-xs border-b border-indigo-200/50 dark:border-indigo-800/40 pb-2">
+                    <span class="text-gray-500 font-bold truncate pr-4 max-w-[200px]" title="${existingItemName}">${existingItemName}</span>
+                    <span class="font-mono text-gray-800 dark:text-gray-100 whitespace-nowrap bg-indigo-100/50 dark:bg-indigo-900/30 px-2 rounded tracking-tight text-right text-success">LPC Base ₹${fixedExistingPrice}</span>
+                </div>
+                <div class="mt-2 text-[10px] ${colorTagClass} flex gap-1 items-start leading-tight">
+                    <p class="pt-0.5 w-full">${trendString}</p>
+                </div>
+            </div>
+        `;
+        assistantBoxElement.innerHTML = liveDbHtml;
+    }
+}
+
+function setupERPMasterPredictiveInputs() {
+    let inputSupplierElement = document.getElementById('pur-supplier');
+    let dropdownSupplierElement = document.getElementById('pur-supplier-dropdown');
+    
+    if (!inputSupplierElement) {
+        return;
+    }
+    if (!dropdownSupplierElement) {
+        return;
+    }
+    
+    inputSupplierElement.addEventListener('focus', renderSupplierDropdown);
+    inputSupplierElement.addEventListener('input', renderSupplierDropdown);
+    
+    inputSupplierElement.addEventListener('blur', function() {
+        setTimeout(function() {
+            dropdownSupplierElement.classList.add('hidden');
+        }, 200);
+    });
+
+    function renderSupplierDropdown() {
+        let rawInputValue = inputSupplierElement.value;
+        let stringInputValue = String(rawInputValue);
+        let trimmedInputValue = stringInputValue.trim();
+        let lowerInputValue = trimmedInputValue.toLowerCase();
+        
+        let matchedSuppliersArray = [];
+        
+        for (let i = 0; i < allSuppliers.length; i++) {
+            let currentSupplier = allSuppliers[i];
+            let supplierName = currentSupplier.name;
+            if (!supplierName) {
+                supplierName = "";
+            }
+            
+            let supplierGstin = currentSupplier.gstin;
+            if (!supplierGstin) {
+                supplierGstin = "";
+            }
+            
+            let stringSupplierName = String(supplierName);
+            let lowerSupplierName = stringSupplierName.toLowerCase();
+            
+            let stringSupplierGstin = String(supplierGstin);
+            let lowerSupplierGstin = stringSupplierGstin.toLowerCase();
+            
+            let doesNameInclude = lowerSupplierName.includes(lowerInputValue);
+            let doesGstinInclude = lowerSupplierGstin.includes(lowerInputValue);
+            
+            if (doesNameInclude === true) {
+                matchedSuppliersArray.push(currentSupplier);
+            } else if (doesGstinInclude === true) {
+                matchedSuppliersArray.push(currentSupplier);
+            }
+        }
+        
+        let htmlContentString = "";
+        let matchesCount = matchedSuppliersArray.length;
+        let isCashQuery = lowerInputValue === 'cash';
+        
+        if (matchesCount === 0) {
+            if (isCashQuery === false) {
+                let noMatchWarningHtml = `
+                    <div class="px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-700 font-semibold text-[11px]">
+                        <i class="fa-solid fa-asterisk"></i> Unknown Supplier. Will be created automatically on save.
+                    </div>
+                `;
+                htmlContentString = noMatchWarningHtml;
+            }
+        } else {
+            for (let j = 0; j < matchedSuppliersArray.length; j++) {
+                let matchedSupplier = matchedSuppliersArray[j];
+                let supplierNameOutput = matchedSupplier.name;
+                if (!supplierNameOutput) {
+                    supplierNameOutput = "";
+                }
+                
+                let supplierGstinOutput = matchedSupplier.gstin;
+                if (!supplierGstinOutput) {
+                    supplierGstinOutput = "";
+                }
+                
+                let badgeHtmlString = "";
+                if (supplierGstinOutput !== "") {
+                    badgeHtmlString = `
+                        <span class="text-[9px] uppercase px-1.5 rounded-sm border bg-gray-100 dark:bg-gray-800 tracking-wider font-mono">
+                            <i class="fa-regular fa-id-badge text-gray-400"></i> ${supplierGstinOutput}
+                        </span>
+                    `;
+                } else {
+                    badgeHtmlString = `<i class="fa-solid fa-street-view text-gray-300"></i>`;
+                }
+                
+                let supplierRowHtml = `
+                    <div class="px-3 py-2 cursor-pointer dropdown-item-hover pur-sup-select-action text-sm transition-colors border-b dark:border-gray-700/50 last:border-0 font-medium text-gray-800 dark:text-gray-100 flex items-center justify-between" 
+                        data-s="${supplierNameOutput}" 
+                        data-g="${supplierGstinOutput}">
+                        <span>${supplierNameOutput}</span>
+                        ${badgeHtmlString}
+                    </div>
+                `;
+                htmlContentString = htmlContentString + supplierRowHtml;
+            }
+        }
+        
+        dropdownSupplierElement.innerHTML = htmlContentString;
+        dropdownSupplierElement.classList.remove('hidden');
+        
+        let allDropdownButtons = dropdownSupplierElement.querySelectorAll('.pur-sup-select-action');
+        
+        for (let k = 0; k < allDropdownButtons.length; k++) {
+            let currentButton = allDropdownButtons[k];
+            
+            currentButton.addEventListener('mousedown', function(event) {
+                event.preventDefault();
+                
+                let dataSupplierName = this.getAttribute('data-s');
+                let dataSupplierGstin = this.getAttribute('data-g');
+                
+                inputSupplierElement.value = dataSupplierName;
+                
+                let targetGstinInput = document.getElementById('pur-gstin');
+                targetGstinInput.value = dataSupplierGstin;
+                
+                let inputEvent = new Event('input');
+                targetGstinInput.dispatchEvent(inputEvent);
+                
+                dropdownSupplierElement.classList.add('hidden');
+            });
+        }
+    }
+}
+
+function resetERP() {
+    let purDateInput = document.getElementById('pur-date');
+    if (purDateInput) {
+        purDateInput.value = todayStr;
+    }
+    
+    let purInvInput = document.getElementById('pur-inv');
+    if (purInvInput) {
+        purInvInput.value = "";
+    }
+    
+    let purInvWarning = document.getElementById('pur-inv-warning');
+    if (purInvWarning) {
+        purInvWarning.style.display = 'none';
+    }
+    
+    let purSupplierInput = document.getElementById('pur-supplier');
+    if (purSupplierInput) {
+        purSupplierInput.value = "";
+    }
+    
+    let purGstinInput = document.getElementById('pur-gstin');
+    if (purGstinInput) {
+        purGstinInput.value = "";
+        let inputEvent = new Event('input');
+        purGstinInput.dispatchEvent(inputEvent);
+    }
+    
+    let purTbody = document.getElementById('pur-tbody');
+    if (purTbody) {
+        purTbody.innerHTML = "";
+    }
+    
+    addPurRow();
+    runPurGridComputations();
+    
+    let scrollOptions = {
+        top: 0,
+        behavior: 'smooth'
+    };
+    window.scrollTo(scrollOptions);
+}
+
+async function handleERPTransactionCommit(shouldPrintFlag) {
+    let purDateElement = document.getElementById('pur-date');
+    let purchaseDateString = purDateElement.value;
+    
+    let purInvElement = document.getElementById('pur-inv');
+    let rawInvString = purInvElement.value;
+    let trimmedInvString = rawInvString.trim();
+    let upperInvString = trimmedInvString.toUpperCase();
+    
+    let finalInvoiceNumber = upperInvString;
+    if (!finalInvoiceNumber) {
+        finalInvoiceNumber = "MANUAL-ERR-SKIPPED";
+    }
+    
+    let purSupplierElement = document.getElementById('pur-supplier');
+    let rawSupplierString = purSupplierElement.value;
+    let finalSupplierString = rawSupplierString.trim();
+    
+    let purGstinElement = document.getElementById('pur-gstin');
+    let rawGstinString = purGstinElement.value;
+    let trimmedGstinString = rawGstinString.trim();
+    let finalGstinString = trimmedGstinString.toUpperCase();
+
+    if (!finalSupplierString) {
+        alert("ERROR - Please provide a supplier name to save the purchase.");
+        purSupplierElement.focus();
+        return;
+    }
+    
+    let gstMasterElement = document.getElementById('pur-gst-master');
+    let isMasterGstChecked = false;
+    if (gstMasterElement) {
+        isMasterGstChecked = gstMasterElement.checked;
+    }
+    
+    let allPurchaseRows = document.querySelectorAll('.pur-row');
+
+    let saveButtonElement = document.getElementById('btn-pur-save');
+    let originalButtonHtml = saveButtonElement.innerHTML;
+
+    let processingHtml = `<i class="fa-solid fa-arrows-spin fa-spin fa-fw"></i> COMMITTING...`;
+    saveButtonElement.innerHTML = processingHtml;
+    saveButtonElement.disabled = true;
+
+    try {
+        let databaseBatch = writeBatch(db);
+
+        for (let i = 0; i < allPurchaseRows.length; i++) {
+            let currentRow = allPurchaseRows[i];
+            
+            let itemInputElement = currentRow.querySelector('.row-item');
+            let rawItemString = itemInputElement.value;
+            let finalItemString = rawItemString.trim();
+            
+            if (!finalItemString) {
+                continue;
+            }
+            
+            let qtyInputElement = currentRow.querySelector('.row-qty');
+            let rawQtyString = qtyInputElement.value;
+            let finalQtyFloat = parseFloat(rawQtyString);
+            if (isNaN(finalQtyFloat)) {
+                finalQtyFloat = 0;
+            }
+            
+            let rateInputElement = currentRow.querySelector('.row-rate');
+            let rawRateString = rateInputElement.value;
+            let finalRateFloat = parseFloat(rawRateString);
+            if (isNaN(finalRateFloat)) {
+                finalRateFloat = 0;
+            }
+
+            if (finalQtyFloat === 0) {
+                continue;
+            }
+            
+            let statePrefixSubstring = finalGstinString.substring(0, 2);
+            if (!statePrefixSubstring) {
+                statePrefixSubstring = "";
+            }
+            
+            let isLocalTransaction = false;
+            if (statePrefixSubstring === LOCAL_STATE_CODE) {
+                isLocalTransaction = true;
+            } else if (statePrefixSubstring === "") {
+                isLocalTransaction = true;
+            }
+            
+            let taxableInputElement = currentRow.querySelector('.row-taxable');
+            let rawTaxableString = taxableInputElement.value;
+            let parsedTaxableFloat = parseFloat(rawTaxableString);
+            
+            let finalTaxableFloat = 0;
+            if (!isNaN(parsedTaxableFloat)) {
+                finalTaxableFloat = parsedTaxableFloat;
+            } else {
+                finalTaxableFloat = finalQtyFloat * finalRateFloat;
+            }
+            
+            let taxValueInputElement = currentRow.querySelector('.row-taxval');
+            let rawTaxValueString = taxValueInputElement.value;
+            let parsedTaxValueFloat = parseFloat(rawTaxValueString);
+            
+            let finalTaxValueFloat = 0;
+            if (!isNaN(parsedTaxValueFloat)) {
+                finalTaxValueFloat = parsedTaxValueFloat;
+            }
+            
+            let gstPercentageInputElement = currentRow.querySelector('.row-gstp');
+            let rawGstPercentageString = gstPercentageInputElement.value;
+            let parsedGstPercentageFloat = parseFloat(rawGstPercentageString);
+            
+            let finalGstPercentageFloat = 0;
+            if (isMasterGstChecked === true) {
+                if (!isNaN(parsedGstPercentageFloat)) {
+                    finalGstPercentageFloat = parsedGstPercentageFloat;
+                } else {
+                    finalGstPercentageFloat = 18;
+                }
+            }
+            
+            let totalInputElement = currentRow.querySelector('.row-total');
+            let rawTotalString = totalInputElement.value;
+            let parsedTotalFloat = parseFloat(rawTotalString);
+            
+            let finalTotalAmountFloat = 0;
+            if (!isNaN(parsedTotalFloat)) {
+                finalTotalAmountFloat = parsedTotalFloat;
+            } else {
+                finalTotalAmountFloat = finalTaxableFloat + finalTaxValueFloat;
+            }
+            
+            let transactionsCollectionReference = collection(db, "transactions");
+            let newTransactionDocumentReference = doc(transactionsCollectionReference);
+            
+            let transactionDateObject = new Date(purchaseDateString + 'T12:00:00');
+            let transactionIsoString = transactionDateObject.toISOString();
+            
+            let hsnInputElement = currentRow.querySelector('.row-hsn');
+            let rawHsnString = hsnInputElement.value;
+            let finalHsnString = "";
+            if (rawHsnString) {
+                finalHsnString = rawHsnString;
+            }
+            
+            let cgstCalculatedValue = 0;
+            let sgstCalculatedValue = 0;
+            let igstCalculatedValue = 0;
+            
+            if (isMasterGstChecked === true) {
+                if (isLocalTransaction === true) {
+                    cgstCalculatedValue = finalTaxValueFloat / 2;
+                    sgstCalculatedValue = finalTaxValueFloat / 2;
+                } else {
+                    igstCalculatedValue = finalTaxValueFloat;
+                }
+            }
+            
+            let transactionDataPayload = {
+                type: "Purchase",
+                item: finalItemString,
+                qty: finalQtyFloat,
+                rate: finalRateFloat,
+                amount: finalTotalAmountFloat,
+                taxable: finalTaxableFloat,
+                date: transactionIsoString,
+                hasGST: isMasterGstChecked,
+                hsn: finalHsnString,
+                cgst: cgstCalculatedValue,
+                sgst: sgstCalculatedValue,
+                igst: igstCalculatedValue,
+                supplier: finalSupplierString,
+                supplierGstin: finalGstinString,
+                invoice: finalInvoiceNumber
+            };
+            
+            databaseBatch.set(newTransactionDocumentReference, transactionDataPayload);
+
+            let matchingInventoryItem = null;
+            let lowerFinalItemString = finalItemString.toLowerCase();
+            
+            for (let j = 0; j < allInventory.length; j++) {
+                let currentInvItem = allInventory[j];
+                let currentInvName = currentInvItem.name;
+                if (!currentInvName) {
+                    currentInvName = "";
+                }
+                let stringCurrentInvName = String(currentInvName);
+                let lowerCurrentInvName = stringCurrentInvName.toLowerCase();
+                
+                if (lowerCurrentInvName === lowerFinalItemString) {
+                    matchingInventoryItem = currentInvItem;
+                    break;
+                }
+            }
+            
+            if (matchingInventoryItem !== null) {
+                let existingItemQty = matchingInventoryItem.qty;
+                let parsedExistingQty = Number(existingItemQty);
+                let finalExistingQty = 0;
+                if (!isNaN(parsedExistingQty)) {
+                    finalExistingQty = parsedExistingQty;
+                }
+                
+                let existingItemPrice = matchingInventoryItem.price;
+                let parsedExistingPrice = Number(existingItemPrice);
+                let finalExistingPrice = 0;
+                if (!isNaN(parsedExistingPrice)) {
+                    finalExistingPrice = parsedExistingPrice;
+                }
+                
+                let combinedTotalQty = finalExistingQty + finalQtyFloat;
+                let calculatedNewAveragePrice = 0;
+                
+                if (combinedTotalQty > 0) {
+                    let oldInventoryValue = finalExistingQty * finalExistingPrice;
+                    let totalInventoryValue = oldInventoryValue + finalTaxableFloat;
+                    calculatedNewAveragePrice = totalInventoryValue / combinedTotalQty;
+                }
+                
+                let parsedNewAveragePrice = parseFloat(calculatedNewAveragePrice);
+                
+                let existingHsnString = matchingInventoryItem.hsn;
+                if (!existingHsnString) {
+                    existingHsnString = "";
+                }
+                
+                let inventoryHsnUpdateString = "";
+                if (finalHsnString !== "") {
+                    inventoryHsnUpdateString = finalHsnString;
+                } else if (existingHsnString !== "") {
+                    inventoryHsnUpdateString = existingHsnString;
+                }
+                
+                let inventoryDocumentReference = doc(db, "inventory", matchingInventoryItem.id);
+                
+                let inventoryUpdatePayload = {
+                    qty: combinedTotalQty,
+                    price: parsedNewAveragePrice,
+                    hasGST: isMasterGstChecked,
+                    hsn: inventoryHsnUpdateString
+                };
+                
+                databaseBatch.update(inventoryDocumentReference, inventoryUpdatePayload);
+                
+            } else {
+                let newInventoryCollectionReference = collection(db, "inventory");
+                let newInventoryDocumentReference = doc(newInventoryCollectionReference);
+                
+                let newInventoryPayload = {
+                    name: finalItemString,
+                    qty: finalQtyFloat,
+                    price: finalRateFloat,
+                    hasGST: isMasterGstChecked,
+                    hsn: finalHsnString
+                };
+                
+                databaseBatch.set(newInventoryDocumentReference, newInventoryPayload);
+            }
+        }
+        
+        await databaseBatch.commit();
+
+        let lowerFinalSupplierString = finalSupplierString.toLowerCase();
+        let isNotCash = lowerFinalSupplierString !== "cash";
+        let isNotEmpty = finalSupplierString !== "";
+        
+        if (isNotCash === true) {
+            if (isNotEmpty === true) {
+                
+                let doesSupplierExist = false;
+                
+                for (let k = 0; k < allSuppliers.length; k++) {
+                    let iteratedSupplier = allSuppliers[k];
+                    let iteratedSupplierName = iteratedSupplier.name;
+                    let stringIteratedName = String(iteratedSupplierName);
+                    let lowerIteratedName = stringIteratedName.toLowerCase();
+                    
+                    if (lowerIteratedName === lowerFinalSupplierString) {
+                        doesSupplierExist = true;
+                        break;
+                    }
+                }
+                
+                if (doesSupplierExist === false) {
+                    let suppliersCollectionReference = collection(db, "suppliers");
+                    let currentTimestampDate = new Date();
+                    let currentTimestampString = currentTimestampDate.toISOString();
+                    
+                    let newSupplierPayload = {
+                        name: finalSupplierString,
+                        gstin: finalGstinString,
+                        createdAt: currentTimestampString
+                    };
+                    
+                    await addDoc(suppliersCollectionReference, newSupplierPayload);
+                }
+            }
+        }
+        
+        showSuccessAnimation("Transaction Saved Successfully!");
+        resetERP();
+        
+    } catch (error) {
+        let errorMessageString = error.message;
+        let alertMessageString = "An internal logic system validation check hit during Database commit phases! Details appended in developer trace... (" + errorMessageString + ")";
+        alert(alertMessageString);
+    } finally {
+        saveButtonElement.innerHTML = originalButtonHtml;
+        saveButtonElement.disabled = false;
+    }
+}
+
+function updateSaleCartUI() {
+    let cartListElement = document.getElementById('cart-list');
+    let cartTotalElement = document.getElementById('cart-total');
+    let cartContainerElement = document.getElementById('cart-container');
+    
+    if (!cartListElement) {
+        return;
+    }
+    if (!cartContainerElement) {
+        return;
+    }
+    
+    cartListElement.innerHTML = '';
+    let totalCartAmountAccumulator = 0;
+    
+    let isCartEmpty = true;
+    if (window.saleCart) {
+        if (window.saleCart.length > 0) {
+            isCartEmpty = false;
+        }
+    }
+    
+    if (isCartEmpty === true) {
+        cartContainerElement.classList.add('hidden');
+    } else {
+        cartContainerElement.classList.remove('hidden');
+        
+        for (let i = 0; i < window.saleCart.length; i++) {
+            let currentCartItem = window.saleCart[i];
+            let currentItemAmount = currentCartItem.amount;
+            
+            totalCartAmountAccumulator = totalCartAmountAccumulator + currentItemAmount;
+            
+            let gstBadgeHtmlString = "";
+            let itemHasGstFlag = currentCartItem.hasGST;
+            if (itemHasGstFlag === true) {
+                gstBadgeHtmlString = `<span class="bg-indigo-100 text-indigo-700 text-[10px] px-1 rounded ml-1 font-bold">GST</span>`;
+            }
+            
+            let currentItemName = currentCartItem.item;
+            let currentItemQty = currentCartItem.qty;
+            let currentItemAmountNumber = Number(currentItemAmount);
+            let currentItemAmountFixed = currentItemAmountNumber.toFixed(2);
+            
+            let cartItemHtmlString = `
+                <li class="py-2 border-b border-gray-200 dark:border-gray-700 last:border-0 flex flex-col gap-0.5">
+                   <div class="flex justify-between items-center text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      <span>${currentItemName} ${gstBadgeHtmlString} <b class="text-primary">(x${currentItemQty})</b></span>
+                      <span class="font-bold">₹${currentItemAmountFixed} <button onclick="window.removeSaleItem(${i})" class="text-danger ml-3 transition-colors active:scale-95"><i class="fa-solid fa-xmark"></i></button></span>
+                   </div>
+                </li>
+            `;
+            
+            cartListElement.innerHTML = cartListElement.innerHTML + cartItemHtmlString;
+        }
+    }
+    
+    if (cartTotalElement) {
+        let fixedTotalAmount = totalCartAmountAccumulator.toFixed(2);
+        cartTotalElement.innerText = fixedTotalAmount;
+    }
+}
+
+window.removeSaleItem = function(indexNumber) {
+    window.saleCart.splice(indexNumber, 1);
+    updateSaleCartUI();
+};
+
+let btnAddToCartElement = document.getElementById('btn-add-to-cart');
+if (btnAddToCartElement) {
+    btnAddToCartElement.addEventListener('click', function() {
+        let saleItemInputElement = document.getElementById('sale-item');
+        let rawSaleItemName = saleItemInputElement.value;
+        let trimmedSaleItemName = rawSaleItemName.trim();
+        
+        let saleQtyInputElement = document.getElementById('sale-qty');
+        let rawSaleQtyString = saleQtyInputElement.value;
+        let parsedSaleQtyInt = parseInt(rawSaleQtyString);
+        let finalSaleQtyInt = 0;
+        if (!isNaN(parsedSaleQtyInt)) {
+            finalSaleQtyInt = parsedSaleQtyInt;
+        }
+        
+        let saleRateInputElement = document.getElementById('sale-rate');
+        let rawSaleRateString = saleRateInputElement.value;
+        let parsedSaleRateFloat = parseFloat(rawSaleRateString);
+        let finalSaleRateFloat = 0;
+        if (!isNaN(parsedSaleRateFloat)) {
+            finalSaleRateFloat = parsedSaleRateFloat;
+        }
+        
+        let isNameInvalid = trimmedSaleItemName === "";
+        let isQtyInvalid = finalSaleQtyInt <= 0;
+        let isRateInvalid = finalSaleRateFloat <= 0;
+        
+        if (isNameInvalid === true) {
+            alert('Invalid Sales parameter. Please enter an item name.');
+            return;
+        }
+        if (isQtyInvalid === true) {
+            alert('Invalid Sales parameter. Please enter a valid quantity.');
+            return;
+        }
+        if (isRateInvalid === true) {
+            alert('Invalid Sales parameter. Please enter a valid rate.');
+            return;
+        }
+        
+        let saleGstCheckboxElement = document.getElementById('sale-gst');
+        let isSaleGstChecked = saleGstCheckboxElement.checked;
+        
+        let calculatedSaleTaxableAmount = finalSaleQtyInt * finalSaleRateFloat;
+        
+        let saleHsnInputElement = document.getElementById('sale-hsn');
+        let rawSaleHsnString = saleHsnInputElement.value;
+        let finalSaleHsnString = "";
+        if (rawSaleHsnString) {
+            finalSaleHsnString = rawSaleHsnString;
+        }
+        
+        let saleCgstInputElement = document.getElementById('sale-cgst');
+        let rawSaleCgstString = saleCgstInputElement.value;
+        let parsedSaleCgstFloat = parseFloat(rawSaleCgstString);
+        let finalSaleCgstFloat = 0;
+        if (isSaleGstChecked === true) {
+            if (!isNaN(parsedSaleCgstFloat)) {
+                finalSaleCgstFloat = parsedSaleCgstFloat;
+            }
+        }
+        
+        let saleSgstInputElement = document.getElementById('sale-sgst');
+        let rawSaleSgstString = saleSgstInputElement.value;
+        let parsedSaleSgstFloat = parseFloat(rawSaleSgstString);
+        let finalSaleSgstFloat = 0;
+        if (isSaleGstChecked === true) {
+            if (!isNaN(parsedSaleSgstFloat)) {
+                finalSaleSgstFloat = parsedSaleSgstFloat;
+            }
+        }
+        
+        let saleIgstInputElement = document.getElementById('sale-igst');
+        let rawSaleIgstString = saleIgstInputElement.value;
+        let parsedSaleIgstFloat = parseFloat(rawSaleIgstString);
+        let finalSaleIgstFloat = 0;
+        if (isSaleGstChecked === true) {
+            if (!isNaN(parsedSaleIgstFloat)) {
+                finalSaleIgstFloat = parsedSaleIgstFloat;
+            }
+        }
+        
+        let totalTaxesAccumulator = finalSaleCgstFloat + finalSaleSgstFloat + finalSaleIgstFloat;
+        let calculatedFinalSaleAmount = calculatedSaleTaxableAmount + totalTaxesAccumulator;
+        
+        let cartPayloadObject = {
+            item: trimmedSaleItemName,
+            qty: finalSaleQtyInt,
+            rate: finalSaleRateFloat,
+            hasGST: isSaleGstChecked,
+            taxable: calculatedSaleTaxableAmount,
+            cgst: finalSaleCgstFloat,
+            sgst: finalSaleSgstFloat,
+            igst: finalSaleIgstFloat,
+            hsn: finalSaleHsnString,
+            amount: calculatedFinalSaleAmount
+        };
+        
+        window.saleCart.push(cartPayloadObject);
+        
+        saleItemInputElement.value = '';
+        saleQtyInputElement.value = '';
+        saleRateInputElement.value = '';
+        saleGstCheckboxElement.checked = false;
+        
+        let saleTaxSectionElement = document.getElementById('sale-tax-section');
+        if (saleTaxSectionElement) {
+            saleTaxSectionElement.classList.add('hidden');
+        }
+        
+        updateSaleCartUI();
+    });
+}
+
+function setupPredictiveSearchSale() {
+    let saleItemInputElement = document.getElementById('sale-item');
+    let saleItemDropdownElement = document.getElementById('sale-item-dropdown');
+    
+    if (!saleItemInputElement) {
+        return;
+    }
+    if (!saleItemDropdownElement) {
+        return;
+    }
+    
+    document.addEventListener('click', function(event) {
+        let targetElement = event.target;
+        let isInputContainsTarget = saleItemInputElement.contains(targetElement);
+        let isDropdownContainsTarget = saleItemDropdownElement.contains(targetElement);
+        
+        if (isInputContainsTarget === false) {
+            if (isDropdownContainsTarget === false) {
+                saleItemDropdownElement.classList.add('hidden');
+            }
+        }
+    });
+    
+    function triggerSaleSearchRender(searchString) {
+        let trimmedSearchString = searchString.trim();
+        let lowerSearchString = trimmedSearchString.toLowerCase();
+        
+        let matchedInventoryArray = [];
+        
+        if (lowerSearchString !== "") {
+            for (let i = 0; i < allInventory.length; i++) {
+                let currentItem = allInventory[i];
+                let currentItemName = currentItem.name;
+                let stringItemName = String(currentItemName);
+                let lowerItemName = stringItemName.toLowerCase();
+                
+                let doesInclude = lowerItemName.includes(lowerSearchString);
+                if (doesInclude === true) {
+                    matchedInventoryArray.push(currentItem);
+                }
+            }
+        } else {
+            matchedInventoryArray = allInventory;
+        }
+        
+        let matchesCount = matchedInventoryArray.length;
+        
+        if (matchesCount === 0) {
+            let noItemsHtmlString = "<div class='p-3 text-xs text-center text-gray-400'>No items found.</div>";
+            saleItemDropdownElement.innerHTML = noItemsHtmlString;
+        } else {
+            let generatedHtmlString = "<div class='p-2 uppercase font-black text-[10px] tracking-[2px] bg-gray-100 text-gray-500'>Inventory Matches:</div>";
+            
+            let maxDisplayCount = 10;
+            let currentDisplayCount = 0;
+            
+            for (let j = 0; j < matchedInventoryArray.length; j++) {
+                if (currentDisplayCount >= maxDisplayCount) {
+                    break;
+                }
+                
+                let matchedItem = matchedInventoryArray[j];
+                let itemNameOutput = matchedItem.name;
+                
+                let itemPriceOutput = matchedItem.price;
+                if (!itemPriceOutput) {
+                    itemPriceOutput = 0;
+                }
+                
+                let itemQtyOutput = matchedItem.qty;
+                if (!itemQtyOutput) {
+                    itemQtyOutput = 0;
+                }
+                
+                let matchedItemHtmlString = `
+                    <div class='p-2 hover:bg-gray-100 border-b cursor-pointer sales-drp text-sm flex items-center justify-between font-bold dark:border-gray-700/50' 
+                         data-t='${itemNameOutput}' 
+                         data-p='${itemPriceOutput}'>
+                        <span>
+                            ${itemNameOutput} 
+                            <span class="text-[10px] text-gray-400 font-medium">Stk ${itemQtyOutput}</span>
+                        </span> 
+                        <span class="text-success text-xs bg-success/10 px-2 py-0.5 rounded border border-success/20 shadow-sm font-mono tracking-tight font-medium border">
+                            ₹${itemPriceOutput}
                         </span>
                     </div>
-                    ${taxDetails}
-                </li>`;
-        });
-    }
-    if(cartTotal) cartTotal.innerText = totalAmount.toFixed(2);
-}
-
-window.removeCartItem = function(index) {
-    window.saleCart.splice(index, 1);
-    updateCartUI();
-};
-
-function updatePurchaseCartUI() {
-    const cartContainer = document.getElementById('purchase-cart-container');
-    const cartList = document.getElementById('purchase-cart-list');
-    const cartTotal = document.getElementById('purchase-cart-total');
-    if(!cartContainer || !cartList) return;
-
-    cartList.innerHTML = '';
-    let totalAmount = 0;
-
-    if (!window.purchaseCart || window.purchaseCart.length === 0) {
-        cartContainer.classList.add('hidden');
-    } else {
-        cartContainer.classList.remove('hidden');
-        window.purchaseCart.forEach((item, index) => {
-            totalAmount += item.amount;
-            let gstBadge = item.hasGST ? `<span class="bg-red-100 text-red-700 text-[10px] px-1 rounded ml-1 font-bold">GST</span>` : '';
-            let taxDetails = item.hasGST ? `<span class="text-[10px] text-gray-400 block mt-0.5">HSN: ${item.hsn||'N/A'} | Taxable: ₹${Number(item.taxable||0).toFixed(2)} | Tax: ₹${Number(item.cgst+item.sgst+item.igst).toFixed(2)}</span>` : '';
+                `;
+                
+                generatedHtmlString = generatedHtmlString + matchedItemHtmlString;
+                currentDisplayCount++;
+            }
             
-            cartList.innerHTML += `
-                <li class="py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                    <div class="flex justify-between items-center">
-                        <div class="flex flex-col">
-                            <span class="text-gray-800 dark:text-gray-200">${item.item} ${gstBadge} <b class="text-danger">(x${item.qty})</b></span>
-                            <span class="text-xs text-gray-400 mt-0.5">${item.partNumber ? `PN: ${item.partNumber}` : ''}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-bold">₹${Number(item.amount||0).toFixed(2)} 
-                                <button type="button" onclick="window.removePurchaseItem(${index})" class="text-danger hover:text-red-700 ml-3"><i class="fa-solid fa-xmark"></i></button>
-                            </span>
-                            ${taxDetails}
-                        </div>
-                    </div>
-                </li>`;
-        });
+            saleItemDropdownElement.innerHTML = generatedHtmlString;
+            
+            let allDropdownButtons = saleItemDropdownElement.querySelectorAll('.sales-drp');
+            for (let k = 0; k < allDropdownButtons.length; k++) {
+                let dropdownButton = allDropdownButtons[k];
+                dropdownButton.addEventListener('click', function() {
+                    let clickedItemName = this.getAttribute('data-t');
+                    let clickedItemPrice = this.getAttribute('data-p');
+                    
+                    saleItemInputElement.value = clickedItemName;
+                    
+                    let saleRateInputElement = document.getElementById('sale-rate');
+                    if (saleRateInputElement) {
+                        saleRateInputElement.value = clickedItemPrice;
+                    }
+                    
+                    saleItemDropdownElement.classList.add('hidden');
+                });
+            }
+        }
+        
+        saleItemDropdownElement.classList.remove('hidden');
     }
-    if(cartTotal) cartTotal.innerText = totalAmount.toFixed(2);
-}
-
-window.removePurchaseItem = function(index) {
-    window.purchaseCart.splice(index, 1);
-    updatePurchaseCartUI();
-};
-
-const btnAddToCart = document.getElementById('btn-add-to-cart');
-if(btnAddToCart) {
-    btnAddToCart.addEventListener('click', () => {
-        const item = document.getElementById('sale-item').value.trim();
-        const qty = parseInt(document.getElementById('sale-qty').value);
-        const rate = parseFloat(document.getElementById('sale-rate').value);
-        const hasGST = document.getElementById('sale-gst').checked;
-        const hsn = document.getElementById('sale-hsn').value.trim();
-        
-        let taxable = parseFloat(document.getElementById('sale-taxable').value) || (qty * rate);
-        let cgst = parseFloat(document.getElementById('sale-cgst').value) || 0;
-        let sgst = parseFloat(document.getElementById('sale-sgst').value) || 0;
-        let igst = parseFloat(document.getElementById('sale-igst').value) || 0;
-        let amount = parseFloat(document.getElementById('sale-amount').value) || (taxable + cgst + sgst + igst);
-
-        if (!item || isNaN(qty) || isNaN(rate) || qty <= 0) { 
-            alert("Please fill Item Name, valid Qty, and Rate."); 
-            return; 
-        }
-        
-        window.saleCart.push({ item, qty, rate, amount, hasGST, hsn, taxable, cgst, sgst, igst });
-        
-        document.getElementById('sale-item').value = ''; 
-        document.getElementById('sale-qty').value = ''; 
-        document.getElementById('sale-rate').value = '';
-        document.getElementById('sale-hsn').value = ''; 
-        document.getElementById('sale-gst').checked = false; 
-        document.getElementById('sale-gst').dispatchEvent(new Event('input'));
-        
-        updateCartUI();
+    
+    saleItemInputElement.addEventListener('focus', function() {
+        let currentInputValue = saleItemInputElement.value;
+        triggerSaleSearchRender(currentInputValue);
+    });
+    
+    saleItemInputElement.addEventListener('input', function() {
+        let currentInputValue = saleItemInputElement.value;
+        triggerSaleSearchRender(currentInputValue);
     });
 }
 
-const btnAddPurchaseCart = document.getElementById('btn-add-purchase-cart');
-if(btnAddPurchaseCart) {
-    btnAddPurchaseCart.addEventListener('click', () => {
-        const item = document.getElementById('purchase-item').value.trim();
-        const partNumber = document.getElementById('purchase-part').value.trim();
-        const qty = parseInt(document.getElementById('purchase-qty').value);
-        const rate = parseFloat(document.getElementById('purchase-rate').value);
-        const hasGST = document.getElementById('purchase-gst').checked;
-        const hsn = document.getElementById('purchase-hsn').value.trim();
-        
-        let taxable = parseFloat(document.getElementById('purchase-taxable').value) || (qty * rate);
-        let cgst = parseFloat(document.getElementById('purchase-cgst').value) || 0;
-        let sgst = parseFloat(document.getElementById('purchase-sgst').value) || 0;
-        let igst = parseFloat(document.getElementById('purchase-igst').value) || 0;
-        let amount = parseFloat(document.getElementById('purchase-amount').value) || (taxable + cgst + sgst + igst);
+let formSaleElement = document.getElementById('form-sale');
 
-        if (!item || isNaN(qty) || isNaN(rate) || qty <= 0) { 
-            alert("Please fill Item Name, valid Qty, and Rate."); 
-            return; 
+if (formSaleElement) {
+    formSaleElement.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        let isCartEmpty = true;
+        if (window.saleCart) {
+            if (window.saleCart.length > 0) {
+                isCartEmpty = false;
+            }
         }
         
-        window.purchaseCart.push({ item, partNumber, qty, rate, amount, hasGST, hsn, taxable, cgst, sgst, igst });
-        
-        document.getElementById('purchase-item').value = ''; 
-        document.getElementById('purchase-part').value = ''; 
-        document.getElementById('purchase-qty').value = '';
-        document.getElementById('purchase-rate').value = ''; 
-        document.getElementById('purchase-hsn').value = ''; 
-        document.getElementById('purchase-gst').checked = false;
-        document.getElementById('purchase-gst').dispatchEvent(new Event('input'));
-        
-        updatePurchaseCartUI();
-    });
-}
-
-// ==========================================
-// 10. SAVE LOGIC (Sales & Purchases)
-// ==========================================
-const saleForm = document.getElementById('form-sale');
-if(saleForm) {
-    saleForm.onsubmit = async (e) => {
-        e.preventDefault(); 
-        const submitBtn = document.getElementById('btn-save-sale'); 
-        if (submitBtn.disabled) return;
-        
-        // Push pending item to cart if user forgot
-        if (document.getElementById('sale-item').value.trim()) document.getElementById('btn-add-to-cart').click();
-        if (!window.saleCart || window.saleCart.length === 0) { 
-            alert("No items in the invoice to sell!"); 
-            return; 
+        if (isCartEmpty === true) {
+            alert('Cart is empty.');
+            return;
         }
-
-        let custName = (document.getElementById('sale-customer')?.value.trim()) || "Cash / Walk-in";
-        let custGstin = (document.getElementById('sale-gstin')?.value.trim().toUpperCase()) || "";
         
-        const originalBtnHTML = submitBtn.innerHTML;
-        submitBtn.disabled = true; 
-        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating Invoice...`;
-        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
-
+        let saveSaleButtonElement = document.getElementById('btn-save-sale');
+        let originalButtonHtmlString = saveSaleButtonElement.innerHTML;
+        
+        let processingHtmlString = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        saveSaleButtonElement.innerHTML = processingHtmlString;
+        saveSaleButtonElement.disabled = true;
+        
+        let saleCustomerInputElement = document.getElementById('sale-customer');
+        let rawCustomerString = saleCustomerInputElement.value;
+        let finalCustomerString = "Cash/Retail Party";
+        if (rawCustomerString) {
+            finalCustomerString = rawCustomerString;
+        }
+        let trimmedCustomerString = finalCustomerString.trim();
+        
+        let saleGstinInputElement = document.getElementById('sale-gstin');
+        let rawGstinString = saleGstinInputElement.value;
+        let trimmedGstinString = rawGstinString.trim();
+        
         try {
-            const batch = writeBatch(db); 
-            const date = new Date().toISOString(); 
-            const invoiceNo = "INV-" + Date.now().toString().slice(-6);
+            let databaseBatch = writeBatch(db);
+            
+            let currentTimestampInt = Date.now();
+            let timestampString = currentTimestampInt.toString();
+            let slicedTimestampString = timestampString.slice(-6);
+            let generatedInvoiceNumber = 'TRNS-' + slicedTimestampString;
+            
+            let currentDateObject = new Date();
+            let currentIsoDateString = currentDateObject.toISOString();
             
             for (let i = 0; i < window.saleCart.length; i++) {
-                const c = window.saleCart[i]; 
-                const transRef = doc(collection(db, "transactions"));
-                const localInv = (window.allInventory||[]).find(inv => String(inv.name||"").toLowerCase() === String(c.item||"").toLowerCase());
+                let currentCartItem = window.saleCart[i];
                 
-                batch.set(transRef, { 
-                    type: "Sale", item: c.item, qty: c.qty, rate: c.rate, amount: c.amount, 
-                    date: date, hasGST: c.hasGST, hsn: c.hsn, taxable: c.taxable, cgst: c.cgst, 
-                    sgst: c.sgst, igst: c.igst, invoiceNo: invoiceNo, 
-                    customerName: custName, customerGstin: custGstin 
-                });
+                let transactionsCollectionReference = collection(db, 'transactions');
+                let newTransactionDocumentReference = doc(transactionsCollectionReference);
                 
-                if (localInv) {
-                    let newQty = (Number(localInv.qty)||0) - c.qty; 
-                    if (newQty < 0) newQty = 0;
-                    batch.update(doc(db, "inventory", localInv.id), { 
-                        qty: newQty, 
-                        hsn: c.hsn || localInv.hsn || "" 
-                    });
+                let transactionDataPayload = {
+                    type: "Sale",
+                    item: currentCartItem.item,
+                    qty: currentCartItem.qty,
+                    rate: currentCartItem.rate,
+                    amount: currentCartItem.amount,
+                    date: currentIsoDateString,
+                    invoiceNo: generatedInvoiceNumber,
+                    customerName: trimmedCustomerString,
+                    customerGstin: trimmedGstinString,
+                    hasGST: currentCartItem.hasGST,
+                    cgst: currentCartItem.cgst,
+                    sgst: currentCartItem.sgst,
+                    igst: currentCartItem.igst,
+                    hsn: currentCartItem.hsn,
+                    taxable: currentCartItem.taxable
+                };
+                
+                databaseBatch.set(newTransactionDocumentReference, transactionDataPayload);
+                
+                let matchingInventoryItem = null;
+                let cartItemNameString = String(currentCartItem.item);
+                let lowerCartItemNameString = cartItemNameString.toLowerCase();
+                
+                for (let j = 0; j < allInventory.length; j++) {
+                    let currentInventoryItem = allInventory[j];
+                    let inventoryItemNameString = String(currentInventoryItem.name);
+                    let lowerInventoryItemNameString = inventoryItemNameString.toLowerCase();
+                    
+                    if (lowerInventoryItemNameString === lowerCartItemNameString) {
+                        matchingInventoryItem = currentInventoryItem;
+                        break;
+                    }
+                }
+                
+                if (matchingInventoryItem !== null) {
+                    let currentInventoryQty = matchingInventoryItem.qty;
+                    let parsedInventoryQty = Number(currentInventoryQty);
+                    let finalInventoryQty = 0;
+                    if (!isNaN(parsedInventoryQty)) {
+                        finalInventoryQty = parsedInventoryQty;
+                    }
+                    
+                    let cartItemQty = currentCartItem.qty;
+                    let subtractedQtyAmount = finalInventoryQty - cartItemQty;
+                    
+                    let finalUpdatedQty = 0;
+                    if (subtractedQtyAmount >= 0) {
+                        finalUpdatedQty = subtractedQtyAmount;
+                    }
+                    
+                    let inventoryDocumentReference = doc(db, 'inventory', matchingInventoryItem.id);
+                    let inventoryUpdatePayload = {
+                        qty: finalUpdatedQty
+                    };
+                    
+                    databaseBatch.update(inventoryDocumentReference, inventoryUpdatePayload);
                 }
             }
             
-            await batch.commit(); 
+            await databaseBatch.commit();
             
-            try {
-                if (!(window.allCustomers||[]).find(c => c.name && c.name.toLowerCase()===custName.toLowerCase()) && custName.toLowerCase() !== "cash" && custName.toLowerCase() !== "cash / walk-in") {
-                    await addDoc(collection(db, "customers"), { name: custName, gstin: custGstin, createdAt: date });
+            let lowerTrimmedCustomerString = trimmedCustomerString.toLowerCase();
+            let isCustomerCash = lowerTrimmedCustomerString === 'cash';
+            let isCustomerCashRetail = lowerTrimmedCustomerString === 'cash/retail party';
+            
+            let isNotCashEntity = false;
+            if (isCustomerCash === false) {
+                if (isCustomerCashRetail === false) {
+                    isNotCashEntity = true;
                 }
-            } catch (err) { console.warn("Customer database check failed.", err); }
+            }
             
-            window.saleCart =[]; 
-            updateCartUI(); 
-            saleForm.reset(); 
-            const gstInd = document.getElementById('gst-indicator');
-            if(gstInd) gstInd.classList.add('hidden');
+            if (isNotCashEntity === true) {
+                let doesCustomerExist = false;
+                
+                for (let k = 0; k < allCustomers.length; k++) {
+                    let currentCustomerObject = allCustomers[k];
+                    let currentCustomerNameString = String(currentCustomerObject.name);
+                    let lowerCurrentCustomerNameString = currentCustomerNameString.toLowerCase();
+                    
+                    if (lowerCurrentCustomerNameString === lowerTrimmedCustomerString) {
+                        doesCustomerExist = true;
+                        break;
+                    }
+                }
+                
+                if (doesCustomerExist === false) {
+                    let customersCollectionReference = collection(db, 'customers');
+                    let newCustomerPayload = {
+                        name: trimmedCustomerString,
+                        gstin: trimmedGstinString
+                    };
+                    
+                    await addDoc(customersCollectionReference, newCustomerPayload);
+                }
+            }
+
+            window.saleCart = [];
+            updateSaleCartUI();
             
-            showSuccessAnimation(`Invoice ${invoiceNo} Generated!`);
+            let formSaleFormElement = document.getElementById('form-sale');
+            if (formSaleFormElement) {
+                formSaleFormElement.reset();
+            }
             
-        } catch (error) { 
-            console.error("Sale error", error);
-            alert("Error saving sale: " + error.message); 
-        } finally { 
-            submitBtn.disabled = false; 
-            submitBtn.innerHTML = originalBtnHTML; 
-            submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            let gstIndicatorElement = document.getElementById('gst-indicator');
+            if (gstIndicatorElement) {
+                gstIndicatorElement.classList.add('hidden');
+            }
+            
+            let successMessageString = "Invoiced & Saved (" + generatedInvoiceNumber + ")";
+            showSuccessAnimation(successMessageString);
+
+        } catch (error) {
+            let errorMessageString = error.message;
+            let alertMessageString = "Checkout Logic Failed: " + errorMessageString;
+            alert(alertMessageString);
+        } finally {
+            saveSaleButtonElement.innerHTML = originalButtonHtmlString;
+            saveSaleButtonElement.disabled = false;
         }
-    };
+    });
 }
 
-const purchaseForm = document.getElementById('form-purchase');
-if(purchaseForm) {
-    purchaseForm.onsubmit = async (e) => {
-        e.preventDefault(); 
-        const submitBtn = document.getElementById('btn-save-purchase'); 
-        if (submitBtn.disabled) return;
-        
-        if (document.getElementById('purchase-item').value.trim()) document.getElementById('btn-add-purchase-cart').click();
-        if (!window.purchaseCart || window.purchaseCart.length === 0) { 
-            alert("No items in the bill to save!"); 
-            return; 
-        }
+function setupCustomerSearch() {
+    let customerInputElement = document.getElementById('sale-customer');
+    let customerDropdownElement = document.getElementById('sale-customer-dropdown');
+    
+    if (!customerInputElement) {
+        return;
+    }
+    if (!customerDropdownElement) {
+        return;
+    }
 
-        let dateStr = new Date().toISOString();
-        const dateInput = document.getElementById('purchase-date').value;
-        if(dateInput) {
-            const parts = dateInput.split('-');
-            dateStr = new Date(parts[0], parts[1]-1, parts[2]).toISOString();
-        }
-        
-        let invoiceNo = document.getElementById('purchase-invoice').value.trim().toUpperCase() || "N/A";
-        let suppName = (document.getElementById('purchase-supplier')?.value.trim()) || "Cash Purchase";
-        let suppGstin = (document.getElementById('purchase-gstin')?.value.trim().toUpperCase()) || "";
-        
-        const originalBtnHTML = submitBtn.innerHTML;
-        submitBtn.disabled = true; 
-        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving Purchase...`;
-        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
-
-        try {
-            const batch = writeBatch(db);
-            
-            for (let i = 0; i < window.purchaseCart.length; i++) {
-                const c = window.purchaseCart[i]; 
-                const transRef = doc(collection(db, "transactions"));
-                const localInv = (window.allInventory||[]).find(inv => String(inv.name||"").toLowerCase() === String(c.item||"").toLowerCase());
+    let saleGstinInputElement = document.getElementById('sale-gstin');
+    if (saleGstinInputElement) {
+        saleGstinInputElement.addEventListener('input', function() {
+            let gstIndicatorElement = document.getElementById('gst-indicator');
+            if (gstIndicatorElement) {
+                let rawGstinValue = saleGstinInputElement.value;
+                let trimmedGstinValue = rawGstinValue.trim();
+                let isGstinEmpty = trimmedGstinValue === '';
                 
-                batch.set(transRef, { 
-                    type: "Purchase", item: c.item, qty: c.qty, rate: c.rate, amount: c.amount, 
-                    date: dateStr, hasGST: c.hasGST, hsn: c.hsn, taxable: c.taxable, cgst: c.cgst, 
-                    sgst: c.sgst, igst: c.igst, supplier: suppName, supplierGstin: suppGstin, 
-                    invoice: invoiceNo, partNumber: c.partNumber||"" 
-                });
-                
-                if (localInv) {
-                    batch.update(doc(db, "inventory", localInv.id), { 
-                        qty: (Number(localInv.qty)||0) + c.qty, 
-                        hasGST: c.hasGST, 
-                        hsn: c.hsn || localInv.hsn || "", 
-                        partNumber: c.partNumber || localInv.partNumber || "" 
-                    });
+                if (isGstinEmpty === false) {
+                    gstIndicatorElement.style.display = 'flex';
                 } else {
-                    batch.set(doc(collection(db, "inventory")), { 
-                        name: c.item, qty: c.qty, price: c.rate, 
-                        hasGST: c.hasGST, hsn: c.hsn || "", 
-                        partNumber: c.partNumber || "" 
-                    });
+                    gstIndicatorElement.style.display = 'none';
                 }
             }
-            await batch.commit();
-            
-            try {
-                if (!(window.allSuppliers||[]).find(s => s.name && s.name.toLowerCase()===suppName.toLowerCase()) && suppName.toLowerCase() !== "cash" && suppName.toLowerCase() !== "cash purchase") {
-                    await addDoc(collection(db, "suppliers"), { name: suppName, gstin: suppGstin, createdAt: dateStr });
-                }
-            } catch (err) { console.warn("Supplier database check failed.", err); }
+        });
+    }
+    
+    customerInputElement.addEventListener('focus', renderCustomerDropdown);
+    customerInputElement.addEventListener('input', renderCustomerDropdown);
+    
+    customerInputElement.addEventListener('blur', function() {
+        setTimeout(function() {
+            customerDropdownElement.classList.add('hidden');
+        }, 200);
+    });
 
-            window.purchaseCart =[]; 
-            updatePurchaseCartUI(); 
-            purchaseForm.reset(); 
-            document.getElementById('purchase-date').value = new Date().toISOString().split('T')[0]; 
-            const pGstInd = document.getElementById('purchase-gst-indicator');
-            if(pGstInd) pGstInd.classList.add('hidden');
+    function renderCustomerDropdown() {
+        let rawInputValue = customerInputElement.value;
+        let trimmedInputValue = rawInputValue.trim();
+        let lowerInputValue = trimmedInputValue.toLowerCase();
+        
+        let matchedCustomersArray = [];
+        
+        for (let i = 0; i < allCustomers.length; i++) {
+            let currentCustomerObject = allCustomers[i];
+            let currentCustomerNameString = String(currentCustomerObject.name);
+            let lowerCurrentCustomerNameString = currentCustomerNameString.toLowerCase();
             
-            showSuccessAnimation("Purchase Saved Successfully!");
-            
-        } catch (e) { 
-            console.error("Purchase error", e);
-            alert("Error saving purchase: " + e.message); 
-        } finally { 
-            submitBtn.disabled = false; 
-            submitBtn.innerHTML = originalBtnHTML; 
-            submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            let doesInclude = lowerCurrentCustomerNameString.includes(lowerInputValue);
+            if (doesInclude === true) {
+                matchedCustomersArray.push(currentCustomerObject);
+            }
         }
-    };
+        
+        let htmlContentString = "";
+        let matchesCount = matchedCustomersArray.length;
+        
+        if (matchesCount > 0) {
+            let headerHtmlString = "<div class='text-gray-400 p-2 font-bold tracking-[1px] uppercase text-[10px]'>Matched Records</div>";
+            htmlContentString = htmlContentString + headerHtmlString;
+            
+            let maxDisplayCount = 10;
+            let currentDisplayCount = 0;
+            
+            for (let j = 0; j < matchedCustomersArray.length; j++) {
+                if (currentDisplayCount >= maxDisplayCount) {
+                    break;
+                }
+                
+                let matchedCustomerObject = matchedCustomersArray[j];
+                let customerNameOutput = matchedCustomerObject.name;
+                
+                let customerGstinOutput = matchedCustomerObject.gstin;
+                if (!customerGstinOutput) {
+                    customerGstinOutput = "";
+                }
+                
+                let customerRowHtmlString = `
+                    <div class='sCusDrop hover:bg-gray-100 p-3 text-sm font-bold border-b cursor-pointer flex justify-between' 
+                         data-t="${customerNameOutput}" 
+                         data-g="${customerGstinOutput}">
+                        ${customerNameOutput} 
+                        <span class="text-xs font-mono text-gray-500">${customerGstinOutput}</span>
+                    </div>
+                `;
+                
+                htmlContentString = htmlContentString + customerRowHtmlString;
+                currentDisplayCount++;
+            }
+            
+            customerDropdownElement.innerHTML = htmlContentString;
+            customerDropdownElement.classList.remove('hidden');
+            
+            let allDropdownButtons = customerDropdownElement.querySelectorAll('.sCusDrop');
+            
+            for (let k = 0; k < allDropdownButtons.length; k++) {
+                let dropdownButtonElement = allDropdownButtons[k];
+                
+                dropdownButtonElement.addEventListener('mousedown', function(event) {
+                    event.preventDefault();
+                    
+                    let dataCustomerName = this.getAttribute('data-t');
+                    let dataCustomerGstin = this.getAttribute('data-g');
+                    
+                    customerInputElement.value = dataCustomerName;
+                    
+                    let saleGstinTargetInputElement = document.getElementById('sale-gstin');
+                    if (saleGstinTargetInputElement) {
+                        saleGstinTargetInputElement.value = dataCustomerGstin;
+                        
+                        let inputEventObject = new Event('input');
+                        saleGstinTargetInputElement.dispatchEvent(inputEventObject);
+                    }
+                    
+                    customerDropdownElement.classList.add('hidden');
+                });
+            }
+        } else {
+            let isQueryValid = lowerInputValue !== "";
+            let isQueryNotCash = lowerInputValue !== 'cash';
+            
+            let isNewCustomerConditionMet = false;
+            if (isQueryValid === true) {
+                if (isQueryNotCash === true) {
+                    isNewCustomerConditionMet = true;
+                }
+            }
+            
+            if (isNewCustomerConditionMet === true) {
+                let newCustomerWarningHtmlString = `<div class='p-3 text-[11px] text-gray-400 font-bold'>Adding manually as newly created customer.</div>`;
+                customerDropdownElement.innerHTML = newCustomerWarningHtmlString;
+                customerDropdownElement.classList.remove('hidden');
+            } else {
+                customerDropdownElement.classList.add('hidden');
+            }
+        }
+    }
 }
 
-const cosmeticForm = document.getElementById('form-cosmetic');
-if (cosmeticForm) {
-    cosmeticForm.onsubmit = async (e) => {
-        e.preventDefault(); 
-        const submitBtn = cosmeticForm.querySelector('button[type="submit"]'); 
-        if (submitBtn.disabled) return;
+let formCosmeticElement = document.getElementById('form-cosmetic');
+
+if (formCosmeticElement) {
+    formCosmeticElement.addEventListener('submit', async function(event) {
+        event.preventDefault();
         
-        const originalBtnHTML = submitBtn.innerHTML; 
-        submitBtn.disabled = true; 
-        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+        let submitterButtonElement = event.submitter;
+        let originalSubmitterHtmlString = submitterButtonElement.innerHTML;
         
-        const item = document.getElementById('cosmetic-item').value.trim() + " (Cosmetic)";
-        let qty = parseInt(document.getElementById('cosmetic-qty').value);
-        let cost = parseFloat(document.getElementById('cosmetic-cost').value);
-        let rate = parseFloat(document.getElementById('cosmetic-rate').value);
-        let amount = qty * rate; 
-        const hasGST = document.getElementById('cosmetic-gst').checked;
-        const date = new Date().toISOString();
+        submitterButtonElement.disabled = true;
+        let processingHtmlString = '<i class="fa-solid fa-bolt fa-bounce text-warning mr-1"></i> Saving...';
+        submitterButtonElement.innerHTML = processingHtmlString;
         
         try {
-            await addDoc(collection(db, "transactions"), { type: "Cosmetic Sale", item, qty, cost, rate, amount, date, hasGST });
-            cosmeticForm.reset(); 
-            showSuccessAnimation("Cosmetic Sale Saved!");
-        } catch (e) { 
-            console.error(e); alert("Error saving cosmetic sale."); 
-        } finally { 
-            submitBtn.disabled = false; 
-            submitBtn.innerHTML = originalBtnHTML; 
-        }
-    };
-}
-
-// ==========================================
-// 11. GST EXCEL EXPORT REPORT
-// ==========================================
-const btnExportGst = document.getElementById('btn-export-gst');
-if(btnExportGst) {
-    btnExportGst.addEventListener('click', () => {
-        const sDate = document.getElementById('gst-export-start').value;
-        const eDate = document.getElementById('gst-export-end').value;
-        if(!sDate || !eDate) { alert("Please select both Start and End dates."); return; }
-
-        const startObj = new Date(sDate + 'T00:00:00'); 
-        const endObj = new Date(eDate + 'T23:59:59');
-        const sales = []; 
-        const purchases =[];
-
-        allTransactions.forEach(t => {
-            if(!t.hasGST) return; // Must have GST marked
-            const tDateObj = new Date(t.date);
-            if(tDateObj < startObj || tDateObj > endObj) return;
-
-            const row = {
-                "Date": tDateObj.toLocaleDateString('en-GB'),
-                "Invoice Number": t.invoiceNo || t.invoice || "N/A",
-                "Party Name": t.customerName || t.supplier || "Cash Party",
-                "GSTIN": t.customerGstin || t.supplierGstin || "Unregistered",
-                "Item Name / Description": t.item,
-                "HSN Code": t.hsn || "N/A",
-                "Quantity": t.qty,
-                "Taxable Value (₹)": Number(t.taxable || (t.amount - (t.cgst||0) - (t.sgst||0) - (t.igst||0))).toFixed(2),
-                "CGST (₹)": Number(t.cgst || 0).toFixed(2),
-                "SGST (₹)": Number(t.sgst || 0).toFixed(2),
-                "IGST (₹)": Number(t.igst || 0).toFixed(2),
-                "Total Invoice Value (₹)": Number(t.amount || 0).toFixed(2)
+            let cosmeticItemInputElement = document.getElementById('cosmetic-item');
+            let rawItemNameString = cosmeticItemInputElement.value;
+            let finalItemNameString = rawItemNameString + " (Cosmetic)";
+            
+            let cosmeticQtyInputElement = document.getElementById('cosmetic-qty');
+            let rawQtyString = cosmeticQtyInputElement.value;
+            let parsedQtyFloat = parseFloat(rawQtyString);
+            
+            let cosmeticRateInputElement = document.getElementById('cosmetic-rate');
+            let rawRateString = cosmeticRateInputElement.value;
+            let parsedRateFloat = parseFloat(rawRateString);
+            
+            let cosmeticCostInputElement = document.getElementById('cosmetic-cost');
+            let rawCostString = cosmeticCostInputElement.value;
+            let parsedCostFloat = parseFloat(rawCostString);
+            
+            let cosmeticGstCheckboxElement = document.getElementById('cosmetic-gst');
+            let isGstChecked = cosmeticGstCheckboxElement.checked;
+            
+            let calculatedAmountFloat = parsedQtyFloat * parsedRateFloat;
+            
+            let currentDateObject = new Date();
+            let currentIsoDateString = currentDateObject.toISOString();
+            
+            let transactionsCollectionReference = collection(db, 'transactions');
+            
+            let transactionPayloadObject = {
+                type: "Cosmetic Sale",
+                item: finalItemNameString,
+                qty: parsedQtyFloat,
+                rate: parsedRateFloat,
+                amount: calculatedAmountFloat,
+                cost: parsedCostFloat,
+                hasGST: isGstChecked,
+                date: currentIsoDateString
             };
-
-            if(t.type === 'Sale') sales.push(row);
-            if(t.type === 'Purchase') purchases.push(row);
-        });
-
-        if(sales.length === 0 && purchases.length === 0) { 
-            alert("No GST transactions found in this date range."); 
-            return; 
+            
+            await addDoc(transactionsCollectionReference, transactionPayloadObject);
+            
+            let formCosmeticFormElement = document.getElementById('form-cosmetic');
+            formCosmeticFormElement.reset();
+            
+            let successMessageString = "Cosmetic Sale Recorded!";
+            showSuccessAnimation(successMessageString);
+            
+        } catch (error) {
+            let errorMessageString = error.message;
+            let alertMessageString = "Error: " + errorMessageString;
+            alert(alertMessageString);
+        } finally {
+            submitterButtonElement.disabled = false;
+            submitterButtonElement.innerHTML = originalSubmitterHtmlString;
         }
-
-        const wb = XLSX.utils.book_new();
-        if(sales.length > 0) { 
-            const wsSales = XLSX.utils.json_to_sheet(sales); 
-            XLSX.utils.book_append_sheet(wb, wsSales, "GST_Sales"); 
-        }
-        if(purchases.length > 0) { 
-            const wsPurch = XLSX.utils.json_to_sheet(purchases); 
-            XLSX.utils.book_append_sheet(wb, wsPurch, "GST_Purchases"); 
-        }
-        XLSX.writeFile(wb, `GST_Filing_Report_${sDate}_to_${eDate}.xlsx`);
     });
 }
 
-// ==========================================
-// 12. ANALYTICS & DASHBOARD METRICS
-// ==========================================
 function updateDashboardMetrics() {
-    if (!allInventory || !allTransactions) return;
-    const todayISO = new Date().toISOString().split('T')[0];
-    let invMap = {}; let invValue = 0; let lowStockCount = 0; let totalStockUnits = 0;
-    allInventory.forEach(item => { 
-        const qty = Number(item.qty) || 0; 
-        const price = Number(item.price) || 0; 
-        invMap[item.name] = { cost: price }; 
-        invValue += (qty * price); 
-        totalStockUnits += qty; 
-        if (qty <= 3) lowStockCount++; 
-    });
-    let todaySales = 0, todayCogs = 0, todayItemsSold = 0; 
-    let overallSales = 0, overallCogs = 0; 
-    let todayItemTrends = {};
+    let hasTransactionsData = allTransactions !== undefined && allTransactions !== null;
+    let hasInventoryData = allInventory !== undefined && allInventory !== null;
     
-    allTransactions.forEach(t => {
-        if (!isYearMatch(t.date)) return;
-        const tDateISO = t.date.split('T')[0]; 
-        const isToday = (tDateISO === todayISO); 
-        const amt = Number(t.amount) || 0; 
-        const qty = Number(t.qty) || 0;
-        
-        if (t.type === 'Sale' || t.type === 'Cosmetic Sale') {
-            overallSales += amt; 
-            let cost = t.type === 'Sale' ? ((invMap[t.item]?.cost || 0) * qty) : ((Number(t.cost) || 0) * qty); 
-            overallCogs += cost;
-            if (isToday) { todaySales += amt; todayCogs += cost; todayItemsSold += qty; todayItemTrends[t.item] = (todayItemTrends[t.item] || 0) + qty; }
-        } else if (t.type === 'Sale Return' || t.type === 'Cosmetic Return') {
-            overallSales -= amt; 
-            let cost = t.type === 'Sale Return' ? ((invMap[t.item]?.cost || 0) * qty) : ((Number(t.cost) || 0) * qty); 
-            overallCogs -= cost;
-            if (isToday) { todaySales -= amt; todayCogs -= cost; todayItemsSold -= qty; todayItemTrends[t.item] = (todayItemTrends[t.item] || 0) - qty; }
+    let isDataReady = false;
+    if (hasTransactionsData === true) {
+        if (hasInventoryData === true) {
+            isDataReady = true;
         }
-    });
-    
-    let todayProfit = todaySales - todayCogs; 
-    let todayMargin = todaySales > 0 ? ((todayProfit / todaySales) * 100).toFixed(1) : 0; 
-    let overallProfit = overallSales - overallCogs;
-    let trendingItem = "N/A"; let maxQty = 0;
-    
-    for (const[itemName, count] of Object.entries(todayItemTrends)) { 
-        if (count > maxQty) { maxQty = count; trendingItem = itemName; } 
     }
     
-    if (document.getElementById('dash-today-sales')) {
-        document.getElementById('dash-today-sales').innerText = `₹${todaySales.toFixed(2)}`; 
-        document.getElementById('dash-today-profit').innerText = `₹${todayProfit.toFixed(2)}`; 
-        document.getElementById('dash-today-margin').innerText = `${todayMargin}%`; 
-        document.getElementById('dash-today-items').innerText = todayItemsSold; 
-        document.getElementById('dash-today-trending').innerText = trendingItem; 
-        document.getElementById('dash-overall-revenue').innerText = `₹${overallSales.toFixed(2)}`; 
-        document.getElementById('dash-overall-profit').innerText = `₹${overallProfit.toFixed(2)}`; 
-        document.getElementById('dash-inv-value').innerText = `₹${invValue.toFixed(2)}`; 
-        document.getElementById('dash-low-stock').innerText = lowStockCount; 
-        document.getElementById('dash-inventory').innerText = totalStockUnits;
+    if (isDataReady === false) {
+        return;
+    }
+    
+    let totalRevenueAccumulator = 0;
+    let totalCostOfGoodsSoldAccumulator = 0;
+    
+    for (let i = 0; i < allTransactions.length; i++) {
+        let currentTransactionObject = allTransactions[i];
+        let transactionDateString = currentTransactionObject.date;
+        
+        let doesYearMatch = isYearMatch(transactionDateString);
+        if (doesYearMatch === false) {
+            continue;
+        }
+        
+        let transactionAmountValue = currentTransactionObject.amount;
+        let parsedAmountValue = Number(transactionAmountValue);
+        let finalAmountValue = 0;
+        if (!isNaN(parsedAmountValue)) {
+            finalAmountValue = parsedAmountValue;
+        }
+        
+        let transactionQtyValue = currentTransactionObject.qty;
+        let parsedQtyValue = Number(transactionQtyValue);
+        let finalQtyValue = 0;
+        if (!isNaN(parsedQtyValue)) {
+            finalQtyValue = parsedQtyValue;
+        }
+        
+        let transactionTypeString = currentTransactionObject.type;
+        let transactionItemName = currentTransactionObject.item;
+        let stringTransactionItemName = String(transactionItemName);
+        let lowerTransactionItemName = stringTransactionItemName.toLowerCase();
+        
+        let inventoryItemPriceValue = 0;
+        
+        if (transactionTypeString === 'Sale') {
+            let matchingInventoryItem = null;
+            for (let j = 0; j < allInventory.length; j++) {
+                let currentInventoryItem = allInventory[j];
+                let inventoryItemNameString = String(currentInventoryItem.name);
+                let lowerInventoryItemNameString = inventoryItemNameString.toLowerCase();
+                
+                if (lowerInventoryItemNameString === lowerTransactionItemName) {
+                    matchingInventoryItem = currentInventoryItem;
+                    break;
+                }
+            }
+            
+            if (matchingInventoryItem !== null) {
+                inventoryItemPriceValue = matchingInventoryItem.price;
+            }
+        }
+        
+        let finalCostOfGoodsSoldForTransaction = 0;
+        
+        if (transactionTypeString === 'Sale') {
+            finalCostOfGoodsSoldForTransaction = inventoryItemPriceValue * finalQtyValue;
+        } else {
+            let transactionCostValue = currentTransactionObject.cost;
+            let parsedCostValue = Number(transactionCostValue);
+            let finalCostValue = 0;
+            if (!isNaN(parsedCostValue)) {
+                finalCostValue = parsedCostValue;
+            }
+            finalCostOfGoodsSoldForTransaction = finalCostValue * finalQtyValue;
+        }
+        
+        let isSaleType = transactionTypeString === 'Sale';
+        let isCosmeticSaleType = transactionTypeString === 'Cosmetic Sale';
+        let isSaleConditionMet = false;
+        
+        if (isSaleType === true) {
+            isSaleConditionMet = true;
+        } else if (isCosmeticSaleType === true) {
+            isSaleConditionMet = true;
+        }
+        
+        if (isSaleConditionMet === true) {
+            totalRevenueAccumulator = totalRevenueAccumulator + finalAmountValue;
+            totalCostOfGoodsSoldAccumulator = totalCostOfGoodsSoldAccumulator + finalCostOfGoodsSoldForTransaction;
+        } else {
+            let isSaleReturnType = transactionTypeString === 'Sale Return';
+            let isCosmeticReturnType = transactionTypeString === 'Cosmetic Return';
+            let isReturnConditionMet = false;
+            
+            if (isSaleReturnType === true) {
+                isReturnConditionMet = true;
+            } else if (isCosmeticReturnType === true) {
+                isReturnConditionMet = true;
+            }
+            
+            if (isReturnConditionMet === true) {
+                totalRevenueAccumulator = totalRevenueAccumulator - finalAmountValue;
+                totalCostOfGoodsSoldAccumulator = totalCostOfGoodsSoldAccumulator - finalCostOfGoodsSoldForTransaction;
+            }
+        }
+    }
+    
+    let todaySalesAmountAccumulator = 0;
+    let todayCostAmountAccumulator = 0;
+    let todayItemsCountAccumulator = 0;
+    let todayItemFrequencyMap = {};
+    
+    for (let k = 0; k < allTransactions.length; k++) {
+        let iterTransactionObject = allTransactions[k];
+        let iterTransactionDateString = iterTransactionObject.date;
+        let iterTransactionDateArray = iterTransactionDateString.split('T');
+        let iterTransactionDatePart = iterTransactionDateArray[0];
+        
+        let isTodayTransaction = iterTransactionDatePart === todayStr;
+        
+        if (isTodayTransaction === true) {
+            let iterTransactionTypeString = iterTransactionObject.type;
+            
+            let isIterSaleType = iterTransactionTypeString.includes('Sale');
+            let isIterReturnType = iterTransactionTypeString.includes('Return');
+            
+            let isValidSaleTransaction = false;
+            if (isIterSaleType === true) {
+                if (isIterReturnType === false) {
+                    isValidSaleTransaction = true;
+                }
+            }
+            
+            if (isValidSaleTransaction === true) {
+                let iterTransactionAmount = iterTransactionObject.amount;
+                let parsedIterAmount = Number(iterTransactionAmount);
+                let finalIterAmount = 0;
+                if (!isNaN(parsedIterAmount)) {
+                    finalIterAmount = parsedIterAmount;
+                }
+                
+                todaySalesAmountAccumulator = todaySalesAmountAccumulator + finalIterAmount;
+                
+                let iterTransactionItemName = iterTransactionObject.item;
+                let stringIterTransactionItemName = String(iterTransactionItemName);
+                let lowerIterTransactionItemName = stringIterTransactionItemName.toLowerCase();
+                
+                let iterInventoryItemPrice = 0;
+                
+                if (iterTransactionTypeString === 'Sale') {
+                    let iterMatchingInventoryItem = null;
+                    for (let m = 0; m < allInventory.length; m++) {
+                        let iterInventoryItem = allInventory[m];
+                        let iterInventoryItemName = String(iterInventoryItem.name);
+                        let lowerIterInventoryItemName = iterInventoryItemName.toLowerCase();
+                        
+                        if (lowerIterInventoryItemName === lowerIterTransactionItemName) {
+                            iterMatchingInventoryItem = iterInventoryItem;
+                            break;
+                        }
+                    }
+                    
+                    if (iterMatchingInventoryItem !== null) {
+                        iterInventoryItemPrice = iterMatchingInventoryItem.price;
+                    }
+                }
+                
+                let iterTransactionQty = iterTransactionObject.qty;
+                let parsedIterQty = Number(iterTransactionQty);
+                let finalIterQty = 0;
+                if (!isNaN(parsedIterQty)) {
+                    finalIterQty = parsedIterQty;
+                }
+                
+                let iterCostCalculationAmount = 0;
+                
+                if (iterTransactionTypeString === 'Sale') {
+                    iterCostCalculationAmount = iterInventoryItemPrice * finalIterQty;
+                } else {
+                    let iterTransactionCost = iterTransactionObject.cost;
+                    iterCostCalculationAmount = iterTransactionCost * finalIterQty;
+                }
+                
+                todayCostAmountAccumulator = todayCostAmountAccumulator + iterCostCalculationAmount;
+                todayItemsCountAccumulator = todayItemsCountAccumulator + finalIterQty;
+                
+                let currentItemFrequency = todayItemFrequencyMap[iterTransactionItemName];
+                if (!currentItemFrequency) {
+                    currentItemFrequency = 0;
+                }
+                
+                let updatedItemFrequency = currentItemFrequency + finalIterQty;
+                todayItemFrequencyMap[iterTransactionItemName] = updatedItemFrequency;
+            }
+        }
+    }
+    
+    let inventoryTotalItemsCount = 0;
+    let inventoryOutOfStockCount = 0;
+    let inventoryLowStockCount = 0;
+    let inventoryTotalValueAccumulator = 0;
+    
+    for (let n = 0; n < allInventory.length; n++) {
+        let loopInventoryItem = allInventory[n];
+        let loopInventoryItemQty = loopInventoryItem.qty;
+        let loopInventoryItemPrice = loopInventoryItem.price;
+        
+        let inventoryItemValue = loopInventoryItemQty * loopInventoryItemPrice;
+        
+        inventoryTotalItemsCount = inventoryTotalItemsCount + loopInventoryItemQty;
+        inventoryTotalValueAccumulator = inventoryTotalValueAccumulator + inventoryItemValue;
+        
+        if (loopInventoryItemQty === 0) {
+            inventoryOutOfStockCount++;
+        } else if (loopInventoryItemQty <= 3) {
+            inventoryLowStockCount++;
+        }
+    }
+
+    let trendingItemNameString = "N/A";
+    let trendingItemMaxQtyValue = 0;
+    
+    let frequencyKeysArray = Object.keys(todayItemFrequencyMap);
+    for (let p = 0; p < frequencyKeysArray.length; p++) {
+        let currentFrequencyKey = frequencyKeysArray[p];
+        let currentFrequencyValue = todayItemFrequencyMap[currentFrequencyKey];
+        
+        if (currentFrequencyValue > trendingItemMaxQtyValue) {
+            trendingItemMaxQtyValue = currentFrequencyValue;
+            trendingItemNameString = currentFrequencyKey;
+        }
+    }
+
+    let dashTodaySalesElement = document.getElementById('dash-today-sales');
+    
+    if (dashTodaySalesElement) {
+        let todayProfitAmount = todaySalesAmountAccumulator - todayCostAmountAccumulator;
+        
+        let todayMarginString = '0%';
+        if (todaySalesAmountAccumulator > 0) {
+            let marginRatioValue = todayProfitAmount / todaySalesAmountAccumulator;
+            let marginPercentageValue = marginRatioValue * 100;
+            let fixedMarginPercentage = marginPercentageValue.toFixed(1);
+            todayMarginString = fixedMarginPercentage + '%';
+        }
+        
+        let dashTodayProfitElement = document.getElementById('dash-today-profit');
+        let dashTodayMarginElement = document.getElementById('dash-today-margin');
+        let dashTodayItemsElement = document.getElementById('dash-today-items');
+        let dashTodayTrendingElement = document.getElementById('dash-today-trending');
+        
+        let dashOverallRevenueElement = document.getElementById('dash-overall-revenue');
+        let dashOverallProfitElement = document.getElementById('dash-overall-profit');
+        let dashInvValueElement = document.getElementById('dash-inv-value');
+        let dashLowStockElement = document.getElementById('dash-low-stock');
+        let dashInventoryElement = document.getElementById('dash-inventory');
+        
+        dashTodaySalesElement.innerText = `₹${todaySalesAmountAccumulator.toFixed(2)}`;
+        dashTodayProfitElement.innerText = `₹${todayProfitAmount.toFixed(2)}`;
+        dashTodayMarginElement.innerText = todayMarginString;
+        dashTodayItemsElement.innerText = todayItemsCountAccumulator;
+        dashTodayTrendingElement.innerText = trendingItemNameString;
+        
+        let overallProfitAmount = totalRevenueAccumulator - totalCostOfGoodsSoldAccumulator;
+        
+        dashOverallRevenueElement.innerText = `₹${totalRevenueAccumulator.toFixed(2)}`;
+        dashOverallProfitElement.innerText = `₹${overallProfitAmount.toFixed(2)}`;
+        dashInvValueElement.innerText = `₹${inventoryTotalValueAccumulator.toFixed(2)}`;
+        dashLowStockElement.innerText = inventoryLowStockCount;
+        dashInventoryElement.innerText = inventoryTotalItemsCount;
     }
 }
 
-const dashMonthSelect = document.getElementById('dash-top-month'); 
-const dashTypeSelect = document.getElementById('dash-top-type');
-if(dashMonthSelect) dashMonthSelect.addEventListener('change', renderDashboardTopItems); 
-if(dashTypeSelect) dashTypeSelect.addEventListener('change', renderDashboardTopItems);
+function renderTransactionsTable() {
+    let tbodyElement = document.querySelector('#table-transactions tbody');
+    if (!tbodyElement) {
+        return;
+    }
+    
+    let filterStartElement = document.getElementById('filter-trans-start');
+    let filterEndElement = document.getElementById('filter-trans-end');
+    let filterGstElement = document.getElementById('filter-trans-gst');
+    
+    let startValueString = filterStartElement.value;
+    let endValueString = filterEndElement.value;
+    let gstFilterValueString = filterGstElement.value;
+    
+    let startDateObject = null;
+    if (startValueString) {
+        let startDateTimeString = startValueString + 'T00:00:00';
+        startDateObject = new Date(startDateTimeString);
+    }
+    
+    let endDateObject = null;
+    if (endValueString) {
+        let endDateTimeString = endValueString + 'T23:59:59';
+        endDateObject = new Date(endDateTimeString);
+    }
 
-function updateDashboardMonths(transactions) {
-    if(!dashMonthSelect) return;
-    const currentSelection = dashMonthSelect.value; 
-    let monthsSet = new Set(); 
-    monthsSet.add(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
+    let htmlContentString = "";
     
-    transactions.forEach(t => { 
-        if (!isYearMatch(t.date)) return; 
-        monthsSet.add(new Date(t.date).toLocaleString('default', { month: 'long', year: 'numeric' })); 
+    for (let i = 0; i < allTransactions.length; i++) {
+        let currentTransactionObject = allTransactions[i];
+        let transactionDateString = currentTransactionObject.date;
+        
+        let doesYearMatch = isYearMatch(transactionDateString);
+        if (doesYearMatch === false) {
+            continue;
+        }
+        
+        let transactionDateObject = new Date(transactionDateString);
+        
+        if (startDateObject !== null) {
+            if (transactionDateObject < startDateObject) {
+                continue;
+            }
+        }
+        
+        if (endDateObject !== null) {
+            if (transactionDateObject > endDateObject) {
+                continue;
+            }
+        }
+        
+        let hasGstFlag = currentTransactionObject.hasGST;
+        
+        let isGstFilterActive = gstFilterValueString === 'GST';
+        if (isGstFilterActive === true) {
+            if (hasGstFlag === false) {
+                continue;
+            }
+        }
+        
+        let isNonGstFilterActive = gstFilterValueString === 'Non-GST';
+        if (isNonGstFilterActive === true) {
+            if (hasGstFlag === true) {
+                continue;
+            }
+        }
+        
+        let transactionTypeString = currentTransactionObject.type;
+        let textClassString = "";
+        
+        let isSaleType = transactionTypeString.includes('Sale');
+        if (isSaleType === true) {
+            let isCosmeticType = transactionTypeString.includes('Cosmetic');
+            if (isCosmeticType === true) {
+                textClassString = 'text-cosmetic';
+            } else {
+                textClassString = 'text-success';
+            }
+        } else {
+            let isPurchaseType = transactionTypeString.includes('Purchase');
+            if (isPurchaseType === true) {
+                textClassString = 'text-danger';
+            } else {
+                textClassString = 'text-warning';
+            }
+        }
+        
+        let buttonHtmlString = "";
+        let isSaleExactType = transactionTypeString === 'Sale';
+        let isPurchaseExactType = transactionTypeString === 'Purchase';
+        let isCosmeticSaleExactType = transactionTypeString === 'Cosmetic Sale';
+        
+        let isActionableType = false;
+        if (isSaleExactType === true) {
+            isActionableType = true;
+        } else if (isPurchaseExactType === true) {
+            isActionableType = true;
+        } else if (isCosmeticSaleExactType === true) {
+            isActionableType = true;
+        }
+        
+        if (isActionableType === true) {
+            buttonHtmlString = `<button class="btn-return bg-warning/20 text-warning hover:bg-warning hover:text-white px-3 py-1 rounded text-xs font-bold transition-colors active:scale-95" data-id="${currentTransactionObject.id}">Return</button>`;
+        } else {
+            buttonHtmlString = `<span class="text-xs text-gray-400 font-bold italic border border-gray-300 dark:border-gray-700 px-2 py-0.5 rounded shadow-sm bg-gray-50/50 dark:bg-gray-800">RTN/VOlD</span>`;
+        }
+        
+        let gstBadgeHtmlString = "";
+        if (hasGstFlag === true) {
+            gstBadgeHtmlString = `<span class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 text-[10px] px-1 py-0.5 rounded ml-2 font-bold uppercase shadow-sm">GST</span>`;
+        }
+        
+        let extraDetailsHtmlString = "";
+        if (transactionTypeString === 'Purchase') {
+            let supplierString = currentTransactionObject.supplier;
+            if (!supplierString) {
+                supplierString = "No Sup.";
+            }
+            
+            let invoiceString = currentTransactionObject.invoice;
+            if (!invoiceString) {
+                invoiceString = "N/A";
+            }
+            
+            extraDetailsHtmlString = extraDetailsHtmlString + `<span class="block text-[10px] text-gray-500 font-mono mt-0.5"><i class="fa-solid fa-industry text-[8px] mr-0.5"></i> ${supplierString} | ${invoiceString}</span>`;
+        }
+        
+        if (transactionTypeString === 'Sale') {
+            let invoiceNoString = currentTransactionObject.invoiceNo;
+            if (!invoiceNoString) {
+                invoiceNoString = "";
+            }
+            
+            let customerNameString = currentTransactionObject.customerName;
+            if (!customerNameString) {
+                customerNameString = "";
+            }
+            
+            extraDetailsHtmlString = extraDetailsHtmlString + `<span class="block text-[10px] text-gray-500 font-mono mt-0.5"><i class="fa-solid fa-barcode text-[8px] mr-0.5"></i> ${invoiceNoString} | Party: ${customerNameString}</span>`;
+        }
+
+        let transactionAmountValue = currentTransactionObject.amount;
+        let parsedAmountValue = Number(transactionAmountValue);
+        let finalAmountValue = 0;
+        if (!isNaN(parsedAmountValue)) {
+            finalAmountValue = parsedAmountValue;
+        }
+        let formattedAmountString = finalAmountValue.toFixed(2);
+        
+        let transactionDateFormattedString = transactionDateObject.toLocaleDateString();
+
+        let rowHtmlString = `
+            <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800 transition-colors">
+                <td class="px-6 py-4 text-xs font-mono tracking-tight font-medium align-top">${transactionDateFormattedString}</td>
+                <td class="px-6 py-4 text-[13px] font-bold tracking-tight align-top ${textClassString}">${transactionTypeString}</td>
+                <td class="px-6 py-4 align-top">
+                    <div class="flex items-start text-[13px] font-semibold text-gray-900 dark:text-gray-100">${currentTransactionObject.item} ${gstBadgeHtmlString}</div>
+                    ${extraDetailsHtmlString}
+                </td>
+                <td class="px-6 py-4 text-xs font-bold text-center font-mono align-top">${currentTransactionObject.qty}</td>
+                <td class="px-6 py-4 text-sm font-black text-right tracking-tight align-top">₹${formattedAmountString}</td>
+                <td class="px-6 py-4 text-center align-top">${buttonHtmlString}</td>
+            </tr>
+        `;
+        
+        htmlContentString = htmlContentString + rowHtmlString;
+    }
+    
+    tbodyElement.innerHTML = htmlContentString;
+}
+
+let btnTransFilterElement = document.getElementById('btn-trans-filter');
+if (btnTransFilterElement) {
+    btnTransFilterElement.addEventListener('click', function() {
+        renderTransactionsTable();
     });
+}
+
+let btnTransClearElement = document.getElementById('btn-trans-clear');
+if (btnTransClearElement) {
+    btnTransClearElement.addEventListener('click', function() {
+        let startInputElement = document.getElementById('filter-trans-start');
+        let endInputElement = document.getElementById('filter-trans-end');
+        let gstFilterElement = document.getElementById('filter-trans-gst');
+        
+        if (startInputElement) {
+            startInputElement.value = '';
+        }
+        if (endInputElement) {
+            endInputElement.value = '';
+        }
+        if (gstFilterElement) {
+            gstFilterElement.value = 'All';
+        }
+        
+        renderTransactionsTable();
+    });
+}
+
+function updateDashboardMonths(transactionsArray) {
+    let monthSelectElement = document.getElementById('dash-top-month');
+    if (!monthSelectElement) {
+        return;
+    }
     
-    let html = ''; 
-    Array.from(monthsSet).forEach(m => { html += `<option value="${m}">${m}</option>`; });
-    dashMonthSelect.innerHTML = html; 
-    if (currentSelection && monthsSet.has(currentSelection)) dashMonthSelect.value = currentSelection;
+    let currentValueString = monthSelectElement.value;
+    let monthsSetObject = new Set();
+    
+    let currentDateObject = new Date();
+    let currentMonthLocaleString = currentDateObject.toLocaleString('default', {month:'long', year:'numeric'});
+    monthsSetObject.add(currentMonthLocaleString);
+    
+    for (let i = 0; i < transactionsArray.length; i++) {
+        let currentTransactionObject = transactionsArray[i];
+        let transactionDateString = currentTransactionObject.date;
+        
+        let doesYearMatch = isYearMatch(transactionDateString);
+        if (doesYearMatch === true) {
+            let transactionDateObject = new Date(transactionDateString);
+            let transactionMonthLocaleString = transactionDateObject.toLocaleString('default', {month:'long', year:'numeric'});
+            monthsSetObject.add(transactionMonthLocaleString);
+        }
+    }
+    
+    let htmlContentString = "";
+    let monthsArray = Array.from(monthsSetObject);
+    
+    for (let j = 0; j < monthsArray.length; j++) {
+        let currentMonthString = monthsArray[j];
+        let optionHtmlString = `<option value="${currentMonthString}">${currentMonthString}</option>`;
+        htmlContentString = htmlContentString + optionHtmlString;
+    }
+    
+    monthSelectElement.innerHTML = htmlContentString;
+    
+    let hasCurrentValue = monthsSetObject.has(currentValueString);
+    if (currentValueString) {
+        if (hasCurrentValue === true) {
+            monthSelectElement.value = currentValueString;
+        }
+    }
+}
+
+let dashTopMonthElement = document.getElementById('dash-top-month');
+if (dashTopMonthElement) {
+    dashTopMonthElement.addEventListener('change', function() {
+        renderDashboardTopItems();
+    });
+}
+
+let dashTopTypeElement = document.getElementById('dash-top-type');
+if (dashTopTypeElement) {
+    dashTopTypeElement.addEventListener('change', function() {
+        renderDashboardTopItems();
+    });
 }
 
 function renderDashboardTopItems() {
-    if(!dashMonthSelect || !dashTypeSelect) return;
-    const selectedMonth = dashMonthSelect.value; 
-    const selectedType = dashTypeSelect.value; 
-    const listContainer = document.getElementById('dash-top-list'); 
-    let itemSalesMap = {};
+    let monthSelectElement = document.getElementById('dash-top-month');
+    let typeSelectElement = document.getElementById('dash-top-type');
+    let listContainerElement = document.getElementById('dash-top-list');
     
-    allTransactions.forEach(t => {
-        if (!isYearMatch(t.date)) return; 
-        if (!t.type.includes('Sale')) return; 
-        if (selectedType !== 'All' && t.type !== selectedType) return;
-        
-        const monthKey = new Date(t.date).toLocaleString('default', { month: 'long', year: 'numeric' }); 
-        if (selectedMonth !== 'All' && monthKey !== selectedMonth) return;
-        
-        if (!itemSalesMap[t.item]) itemSalesMap[t.item] = 0;
-        if (t.type === 'Sale' || t.type === 'Cosmetic Sale') itemSalesMap[t.item] += Number(t.qty); 
-        else if (t.type === 'Sale Return' || t.type === 'Cosmetic Return') itemSalesMap[t.item] -= Number(t.qty);
-    });
-    
-    let sortedItems = Object.keys(itemSalesMap)
-        .map(itemName => ({ name: itemName, sold: itemSalesMap[itemName] }))
-        .filter(item => item.sold > 0)
-        .sort((a, b) => b.sold - a.sold)
-        .slice(0, 10); 
-        
-    listContainer.innerHTML = '';
-    if (sortedItems.length === 0) { 
-        listContainer.innerHTML = `<li class="text-center py-6 text-gray-500">No sales found for this filter.</li>`; 
-        return; 
+    if (!monthSelectElement) {
+        return;
+    }
+    if (!typeSelectElement) {
+        return;
     }
     
-    let rank = 1;
-    sortedItems.forEach(item => {
-        let rankColor = rank === 1 ? '#f59e0b' : (rank === 2 ? '#9ca3af' : (rank === 3 ? '#b45309' : '#6b7280'));
-        let rankIcon = rank <= 3 ? `<i class="fa-solid fa-medal" style="color: ${rankColor}"></i>` : `<span class="inline-block w-5 text-center text-white rounded-full text-xs leading-5" style="background:${rankColor}">${rank}</span>`;
-        listContainer.innerHTML += `<li class="flex justify-between items-center py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors"><div class="text-sm font-medium"><span class="mr-3">${rankIcon}</span> ${item.name}</div><div class="text-xs font-bold text-success bg-success/10 px-2 py-1 rounded">${item.sold} sold</div></li>`;
-        rank++;
+    let monthValueString = monthSelectElement.value;
+    let typeValueString = typeSelectElement.value;
+    
+    let itemSalesMapObject = {};
+    
+    for (let i = 0; i < allTransactions.length; i++) {
+        let currentTransactionObject = allTransactions[i];
+        let transactionDateString = currentTransactionObject.date;
+        let transactionTypeString = currentTransactionObject.type;
+        
+        let doesYearMatch = isYearMatch(transactionDateString);
+        if (doesYearMatch === false) {
+            continue;
+        }
+        
+        let isSaleTypeTransaction = transactionTypeString.includes('Sale');
+        if (isSaleTypeTransaction === false) {
+            continue;
+        }
+        
+        let isTypeFilterAll = typeValueString === 'All';
+        if (isTypeFilterAll === false) {
+            if (transactionTypeString !== typeValueString) {
+                continue;
+            }
+        }
+        
+        let transactionDateObject = new Date(transactionDateString);
+        let transactionMonthLocaleString = transactionDateObject.toLocaleString('default', {month:'long', year:'numeric'});
+        
+        let isMonthFilterAll = monthValueString === 'All';
+        if (isMonthFilterAll === false) {
+            if (transactionMonthLocaleString !== monthValueString) {
+                continue;
+            }
+        }
+
+        let transactionItemName = currentTransactionObject.item;
+        
+        let currentMappedValue = itemSalesMapObject[transactionItemName];
+        if (!currentMappedValue) {
+            itemSalesMapObject[transactionItemName] = 0;
+        }
+        
+        let transactionQtyValue = currentTransactionObject.qty;
+        let parsedQtyValue = Number(transactionQtyValue);
+        
+        let isExactSaleType = transactionTypeString === 'Sale';
+        let isExactCosmeticSaleType = transactionTypeString === 'Cosmetic Sale';
+        
+        let isAdditionOperation = false;
+        if (isExactSaleType === true) {
+            isAdditionOperation = true;
+        } else if (isExactCosmeticSaleType === true) {
+            isAdditionOperation = true;
+        }
+        
+        if (isAdditionOperation === true) {
+            itemSalesMapObject[transactionItemName] = itemSalesMapObject[transactionItemName] + parsedQtyValue;
+        } else {
+            itemSalesMapObject[transactionItemName] = itemSalesMapObject[transactionItemName] - parsedQtyValue;
+        }
+    }
+    
+    let mapKeysArray = Object.keys(itemSalesMapObject);
+    let itemsArray = [];
+    
+    for (let j = 0; j < mapKeysArray.length; j++) {
+        let currentKeyString = mapKeysArray[j];
+        let currentQtyValue = itemSalesMapObject[currentKeyString];
+        
+        let itemPayloadObject = {
+            n: currentKeyString,
+            q: currentQtyValue
+        };
+        
+        itemsArray.push(itemPayloadObject);
+    }
+    
+    let filteredItemsArray = [];
+    for (let k = 0; k < itemsArray.length; k++) {
+        let iterItemObject = itemsArray[k];
+        let iterItemQty = iterItemObject.q;
+        
+        if (iterItemQty > 0) {
+            filteredItemsArray.push(iterItemObject);
+        }
+    }
+    
+    filteredItemsArray.sort(function(a, b) {
+        return b.q - a.q;
+    });
+    
+    let slicedItemsArray = filteredItemsArray.slice(0, 10);
+    let htmlContentString = "";
+    
+    let itemsCount = slicedItemsArray.length;
+    if (itemsCount === 0) {
+        let noRecordsHtmlString = `<li class="text-center text-sm p-4 text-gray-500 font-medium">No records found.</li>`;
+        listContainerElement.innerHTML = noRecordsHtmlString;
+        return;
+    }
+    
+    let rankIndexValue = 1;
+    
+    for (let m = 0; m < slicedItemsArray.length; m++) {
+        let currentSlicedItemObject = slicedItemsArray[m];
+        let itemNameString = currentSlicedItemObject.n;
+        let itemQtyValue = currentSlicedItemObject.q;
+        
+        let colorCodeString = "";
+        if (rankIndexValue === 1) {
+            colorCodeString = '#10b981';
+        } else if (rankIndexValue === 2) {
+            colorCodeString = '#f59e0b';
+        } else if (rankIndexValue === 3) {
+            colorCodeString = '#3b82f6';
+        } else {
+            colorCodeString = '#9ca3af';
+        }
+        
+        let iconHtmlString = "";
+        if (rankIndexValue <= 3) {
+            iconHtmlString = `<i class="fa-solid fa-medal" style="color: ${colorCodeString}"></i>`;
+        } else {
+            iconHtmlString = `<span class="inline-block bg-gray-200 text-gray-600 rounded text-center w-5 font-bold shadow text-xs py-0.5">${rankIndexValue}</span>`;
+        }
+        
+        let listItemHtmlString = `
+            <li class="flex justify-between items-center py-2 px-3 rounded hover:bg-gray-50 transition border-b dark:border-gray-700/30 font-semibold">
+                <span class="text-[13px] tracking-tight truncate">
+                    ${iconHtmlString} 
+                    <span class="ml-2">${itemNameString}</span>
+                </span>
+                <span class="text-xs font-mono font-bold text-success px-2 border border-success/30 bg-success/10 py-0.5 rounded shadow-sm">
+                    ${itemQtyValue} sold
+                </span>
+            </li>
+        `;
+        
+        htmlContentString = htmlContentString + listItemHtmlString;
+        rankIndexValue++;
+    }
+    
+    listContainerElement.innerHTML = htmlContentString;
+}
+
+let tableTransactionsTbodyElement = document.querySelector('#table-transactions tbody');
+
+if (tableTransactionsTbodyElement) {
+    tableTransactionsTbodyElement.addEventListener('click', async function(event) {
+        let targetElement = event.target;
+        let isReturnButtonClass = targetElement.classList.contains('btn-return');
+        
+        if (isReturnButtonClass === true) {
+            let buttonElement = targetElement;
+            buttonElement.disabled = true;
+            let originalHtmlString = buttonElement.innerHTML;
+            
+            let transactionIdString = buttonElement.getAttribute('data-id');
+            let targetTransactionObject = null;
+            
+            for (let i = 0; i < allTransactions.length; i++) {
+                let currentTransactionObject = allTransactions[i];
+                let currentTransactionId = currentTransactionObject.id;
+                
+                if (currentTransactionId === transactionIdString) {
+                    targetTransactionObject = currentTransactionObject;
+                    break;
+                }
+            }
+            
+            if (targetTransactionObject === null) {
+                buttonElement.disabled = false;
+                return;
+            }
+            
+            let promptMessageString = "Return Qty?\n(Max: " + targetTransactionObject.qty + ")";
+            let promptResponseString = prompt(promptMessageString);
+            
+            if (promptResponseString === null) {
+                buttonElement.disabled = false;
+                return;
+            }
+            
+            let parsedResponseQty = parseInt(promptResponseString);
+            
+            let isResponseNaN = isNaN(parsedResponseQty);
+            let isResponseZeroOrLess = parsedResponseQty <= 0;
+            let isResponseGreaterThanMax = parsedResponseQty > targetTransactionObject.qty;
+            
+            let isResponseInvalid = false;
+            if (isResponseNaN === true) {
+                isResponseInvalid = true;
+            } else if (isResponseZeroOrLess === true) {
+                isResponseInvalid = true;
+            } else if (isResponseGreaterThanMax === true) {
+                isResponseInvalid = true;
+            }
+            
+            if (isResponseInvalid === true) {
+                alert("Invalid Qty");
+                buttonElement.disabled = false;
+                return;
+            }
+            
+            let processingSpinnerHtml = `<i class="fa-solid fa-spin fa-circle-notch"></i>`;
+            buttonElement.innerHTML = processingSpinnerHtml;
+            
+            try {
+                let databaseBatchObject = writeBatch(db);
+                
+                let transactionAmountValue = targetTransactionObject.amount;
+                let transactionQtyValue = targetTransactionObject.qty;
+                
+                let unitAmountValue = transactionAmountValue / transactionQtyValue;
+                let deductionAmountValue = unitAmountValue * parsedResponseQty;
+
+                let isFullReturn = parsedResponseQty === transactionQtyValue;
+                
+                if (isFullReturn === true) {
+                    let transactionDocumentReference = doc(db, "transactions", targetTransactionObject.id);
+                    databaseBatchObject.delete(transactionDocumentReference);
+                } else {
+                    let updatedQtyValue = transactionQtyValue - parsedResponseQty;
+                    let updatedAmountValue = transactionAmountValue - deductionAmountValue;
+                    
+                    let transactionDocumentReference = doc(db, "transactions", targetTransactionObject.id);
+                    let updatePayloadObject = {
+                        qty: updatedQtyValue,
+                        amount: updatedAmountValue
+                    };
+                    
+                    databaseBatchObject.update(transactionDocumentReference, updatePayloadObject);
+                }
+                
+                let transactionTypeString = targetTransactionObject.type;
+                let isCosmeticType = transactionTypeString.includes('Cosmetic');
+                
+                if (isCosmeticType === false) {
+                    let transactionItemName = targetTransactionObject.item;
+                    let targetInventoryItemObject = null;
+                    
+                    for (let j = 0; j < allInventory.length; j++) {
+                        let currentInventoryItem = allInventory[j];
+                        let currentInventoryItemName = currentInventoryItem.name;
+                        
+                        if (currentInventoryItemName === transactionItemName) {
+                            targetInventoryItemObject = currentInventoryItem;
+                            break;
+                        }
+                    }
+                    
+                    if (targetInventoryItemObject !== null) {
+                        let currentInventoryQtyValue = targetInventoryItemObject.qty;
+                        let parsedInventoryQtyValue = Number(currentInventoryQtyValue);
+                        let finalInventoryQtyValue = 0;
+                        
+                        if (!isNaN(parsedInventoryQtyValue)) {
+                            finalInventoryQtyValue = parsedInventoryQtyValue;
+                        }
+                        
+                        let isSaleType = transactionTypeString === 'Sale';
+                        let isPurchaseType = transactionTypeString === 'Purchase';
+                        
+                        if (isSaleType === true) {
+                            finalInventoryQtyValue = finalInventoryQtyValue + parsedResponseQty;
+                        } else if (isPurchaseType === true) {
+                            finalInventoryQtyValue = finalInventoryQtyValue - parsedResponseQty;
+                        }
+                        
+                        let safeInventoryQtyValue = 0;
+                        if (finalInventoryQtyValue > 0) {
+                            safeInventoryQtyValue = finalInventoryQtyValue;
+                        }
+                        
+                        let inventoryDocumentReference = doc(db, "inventory", targetInventoryItemObject.id);
+                        let inventoryUpdatePayload = {
+                            qty: safeInventoryQtyValue
+                        };
+                        
+                        databaseBatchObject.update(inventoryDocumentReference, inventoryUpdatePayload);
+                    }
+                }
+                
+                await databaseBatchObject.commit();
+                
+                let successMessageString = "Return Processed Successfully!";
+                showSuccessAnimation(successMessageString);
+                
+            } catch (error) {
+                alert('Return failed.');
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = originalHtmlString;
+            }
+        }
     });
 }
 
-// ==========================================
-// 13. TRANSACTIONS LEDGER & RETURNS
-// ==========================================
-const btnTransFilter = document.getElementById('btn-trans-filter');
-const btnTransClear = document.getElementById('btn-trans-clear');
-if(btnTransFilter) btnTransFilter.addEventListener('click', renderTransactionsTable);
-if(btnTransClear) btnTransClear.addEventListener('click', () => { 
-    document.getElementById('filter-trans-start').value = ''; 
-    document.getElementById('filter-trans-end').value = ''; 
-    document.getElementById('filter-trans-gst').value = 'All'; 
-    renderTransactionsTable(); 
-});
-
-function renderTransactionsTable() {
-    const tbody = document.querySelector('#table-transactions tbody');
-    if(!tbody) return;
-    
-    const startVal = document.getElementById('filter-trans-start').value; 
-    const endVal = document.getElementById('filter-trans-end').value; 
-    const gstFilter = document.getElementById('filter-trans-gst').value;
-    
-    let sD = startVal ? new Date(startVal + 'T00:00:00') : null; 
-    let eD = endVal ? new Date(endVal + 'T23:59:59') : null; 
-    let html =[];
-    
-    allTransactions.forEach((t) => {
-        if (!isYearMatch(t.date)) return; 
-        const tDate = new Date(t.date); 
-        if (sD && tDate < sD) return; 
-        if (eD && tDate > eD) return;
-        if (gstFilter === 'GST' && !t.hasGST) return; 
-        if (gstFilter === 'Non-GST' && t.hasGST) return;
-        
-        let tColorClass = t.type.includes('Sale') ? (t.type.includes('Cosmetic') ? 'text-cosmetic' : 'text-success') : (t.type.includes('Purchase') ? 'text-danger' : 'text-warning');
-        let actionBtn = (t.type === 'Sale' || t.type === 'Purchase' || t.type === 'Cosmetic Sale') 
-            ? `<button class="btn-return bg-warning/20 hover:bg-warning text-warning hover:text-white px-3 py-1 rounded text-xs font-bold transition-colors" data-id="${t.id}">Return</button>` 
-            : `<span class="text-xs text-gray-400 font-medium italic">Returned</span>`;
-        let gstBadge = t.hasGST ? `<span class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold uppercase">GST</span>` : '';
-        
-        let extraInfo = ''; 
-        if (t.type === 'Purchase' && t.supplier) extraInfo += `<span class="block text-[10px] text-gray-500 mt-0.5">Supp: ${t.supplier} | Inv: ${t.invoice || 'N/A'}</span>`;
-        if (t.type === 'Sale' && t.invoiceNo) extraInfo += `<span class="block text-[10px] text-gray-500 mt-0.5">Inv: ${t.invoiceNo}</span>`;
-
-        html.push(`<tr><td class="px-6 py-4 whitespace-nowrap">${tDate.toLocaleDateString()}</td><td class="px-6 py-4 whitespace-nowrap font-bold ${tColorClass}">${t.type}</td><td class="px-6 py-4"><div class="flex items-center">${t.item || "Unknown"} ${gstBadge}</div>${extraInfo}</td><td class="px-6 py-4 whitespace-nowrap">${Number(t.qty) || 0}</td><td class="px-6 py-4 whitespace-nowrap font-semibold">₹${(Number(t.amount) || 0).toFixed(2)}</td><td class="px-6 py-4 text-center whitespace-nowrap">${actionBtn}</td></tr>`);
+let btnAnaFilterElement = document.getElementById('btn-ana-filter');
+if (btnAnaFilterElement) {
+    btnAnaFilterElement.addEventListener('click', function() {
+        runAnalytics();
     });
-    tbody.innerHTML = html.join('');
 }
 
-document.querySelector('#table-transactions tbody')?.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('btn-return')) {
-        const btn = e.target; 
-        if (btn.disabled) return; 
-        const id = btn.getAttribute('data-id'); 
-        const t = allTransactions.find(x => x.id === id); 
-        if (!t) return;
-        
-        let returnQtyStr = prompt(`How many '${t.item}' do you want to return?\n(Original Quantity: ${t.qty})`, t.qty);
-        if (returnQtyStr === null) return; 
-        
-        let returnQty = parseInt(returnQtyStr); 
-        if (isNaN(returnQty) || returnQty <= 0 || returnQty > t.qty) { 
-            alert(`Invalid quantity! Must be between 1 and ${t.qty}`); 
-            return; 
+let btnAnaClearElement = document.getElementById('btn-ana-clear');
+if (btnAnaClearElement) {
+    btnAnaClearElement.addEventListener('click', function() {
+        let anaStartElement = document.getElementById('ana-start');
+        if (anaStartElement) {
+            anaStartElement.value = '';
         }
         
-        const originalHTML = btn.innerHTML; 
-        btn.disabled = true; 
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`; 
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-        
-        let returnAmount = (t.amount / t.qty) * returnQty;
-        
-        try {
-            const batch = writeBatch(db);
-            if (returnQty === t.qty) {
-                batch.delete(doc(db, "transactions", t.id)); 
-            } else {
-                batch.update(doc(db, "transactions", t.id), { qty: t.qty - returnQty, amount: t.amount - returnAmount });
-            }
-            if (t.type !== 'Cosmetic Sale') { 
-                const localInvItem = allInventory.find(i => i.name === t.item); 
-                if (localInvItem) { 
-                    let newStock = Number(localInvItem.qty); 
-                    if (t.type === 'Sale') newStock += returnQty; 
-                    else if (t.type === 'Purchase') newStock -= returnQty; 
-                    if(newStock < 0) newStock = 0; 
-                    batch.update(doc(db, "inventory", localInvItem.id), { qty: newStock }); 
-                } 
-            }
-            await batch.commit(); 
-            showSuccessAnimation("Return Processed Successfully!");
-        } catch (err) { 
-            alert("Error processing the return."); 
-            btn.disabled = false; 
-            btn.innerHTML = originalHTML; 
-            btn.classList.remove('opacity-50', 'cursor-not-allowed'); 
+        let anaEndElement = document.getElementById('ana-end');
+        if (anaEndElement) {
+            anaEndElement.value = '';
         }
-    }
-});
+        
+        runAnalytics();
+    });
+}
 
-// ==========================================
-// 14. IN DEPTH ANALYTICS (Charts & Tables)
-// ==========================================
-document.getElementById('btn-ana-filter')?.addEventListener('click', runAnalytics); 
-document.getElementById('btn-ana-clear')?.addEventListener('click', () => { document.getElementById('ana-start').value = ''; document.getElementById('ana-end').value = ''; runAnalytics(); }); 
-document.getElementById('btn-ana-today')?.addEventListener('click', () => { const today = new Date().toISOString().split('T')[0]; document.getElementById('ana-start').value = today; document.getElementById('ana-end').value = today; runAnalytics(); }); 
-document.getElementById('ana-class-filter')?.addEventListener('change', runAnalytics); 
-document.getElementById('filter-top-selling')?.addEventListener('change', runAnalytics); 
-document.getElementById('filter-inv-status')?.addEventListener('change', runAnalytics);
+let btnAnaTodayElement = document.getElementById('btn-ana-today');
+if (btnAnaTodayElement) {
+    btnAnaTodayElement.addEventListener('click', function() {
+        let anaStartElement = document.getElementById('ana-start');
+        if (anaStartElement) {
+            anaStartElement.value = todayStr;
+        }
+        
+        let anaEndElement = document.getElementById('ana-end');
+        if (anaEndElement) {
+            anaEndElement.value = todayStr;
+        }
+        
+        runAnalytics();
+    });
+}
+
+let filterTopSellingElement = document.getElementById('filter-top-selling');
+if (filterTopSellingElement) {
+    filterTopSellingElement.addEventListener('change', function() {
+        runAnalytics();
+    });
+}
+
+let filterInvStatusElement = document.getElementById('filter-inv-status');
+if (filterInvStatusElement) {
+    filterInvStatusElement.addEventListener('change', function() {
+        runAnalytics();
+    });
+}
+
+let anaClassFilterElement = document.getElementById('ana-class-filter');
+if (anaClassFilterElement) {
+    anaClassFilterElement.addEventListener('change', function() {
+        runAnalytics();
+    });
+}
 
 function runAnalytics() {
-    if(!document.getElementById('tab-analytics')?.classList.contains('active')) return;
-    const startVal = document.getElementById('ana-start').value; 
-    const endVal = document.getElementById('ana-end').value; 
-    let startDate = startVal ? new Date(startVal + 'T00:00:00') : null; 
-    let endDate = endVal ? new Date(endVal + 'T23:59:59') : null; 
+    let tabAnalyticsElement = document.getElementById('tab-analytics');
+    if (!tabAnalyticsElement) {
+        return;
+    }
     
-    let revenue = 0; let cogs = 0; let itemStats = {}; let monthlyData = {};
+    let isTabActive = tabAnalyticsElement.classList.contains('active');
+    if (isTabActive === false) {
+        return;
+    }
     
-    allInventory.forEach(inv => { 
-        itemStats[inv.name] = { stock: inv.qty, unitCost: inv.price, invValue: (inv.qty * inv.price), qtySold: 0, totalRevenue: 0 }; 
-    });
+    let anaStartElement = document.getElementById('ana-start');
+    let anaStartValueString = anaStartElement.value;
+    let startDateObject = null;
     
-    allTransactions.forEach(trans => {
-        if (!isYearMatch(trans.date)) return; 
-        const tDate = new Date(trans.date); 
-        if (startDate && tDate < startDate) return; 
-        if (endDate && tDate > endDate) return;
+    if (anaStartValueString) {
+        let formattedStartString = anaStartValueString + 'T00:00:00';
+        startDateObject = new Date(formattedStartString);
+    }
+    
+    let anaEndElement = document.getElementById('ana-end');
+    let anaEndValueString = anaEndElement.value;
+    let endDateObject = null;
+    
+    if (anaEndValueString) {
+        let formattedEndString = anaEndValueString + 'T23:59:59';
+        endDateObject = new Date(formattedEndString);
+    }
+
+    let revenueAccumulatorValue = 0;
+    let costOfGoodsAccumulatorValue = 0;
+    
+    let itemStatsMapObject = {};
+    let monthlyStatsMapObject = {};
+
+    for (let i = 0; i < allInventory.length; i++) {
+        let currentInventoryItem = allInventory[i];
+        let itemNameString = currentInventoryItem.name;
         
-        const monthKey = tDate.toLocaleString('default', { month: 'short', year: 'numeric' }); 
-        if(!monthlyData[monthKey]) monthlyData[monthKey] = { sales: 0, profit: 0 };
+        let itemQtyValue = currentInventoryItem.qty;
+        let itemPriceValue = currentInventoryItem.price;
+        let itemTotalValue = itemQtyValue * itemPriceValue;
         
-        if(trans.type === 'Sale') {
-            revenue += trans.amount; monthlyData[monthKey].sales += trans.amount; let cost = 0;
-            if(itemStats[trans.item]) { 
-                cost = itemStats[trans.item].unitCost * trans.qty; 
-                itemStats[trans.item].qtySold += trans.qty; 
-                itemStats[trans.item].totalRevenue += trans.amount; 
-            }
-            cogs += cost; monthlyData[monthKey].profit += (trans.amount - cost);
-        } else if (trans.type === 'Cosmetic Sale') { 
-            revenue += trans.amount; monthlyData[monthKey].sales += trans.amount; 
-            let cost = (trans.cost || 0) * trans.qty; 
-            cogs += cost; monthlyData[monthKey].profit += (trans.amount - cost);
-        } else if (trans.type === 'Sale Return') {
-            revenue -= trans.amount; monthlyData[monthKey].sales -= trans.amount; let cost = 0;
-            if(itemStats[trans.item]) { 
-                cost = itemStats[trans.item].unitCost * trans.qty; 
-                itemStats[trans.item].qtySold -= trans.qty; 
-                itemStats[trans.item].totalRevenue -= trans.amount; 
-            }
-            cogs -= cost; monthlyData[monthKey].profit -= (trans.amount - cost);
-        } else if (trans.type === 'Cosmetic Return') { 
-            revenue -= trans.amount; monthlyData[monthKey].sales -= trans.amount; 
-            let cost = (trans.cost || 0) * trans.qty; 
-            cogs -= cost; monthlyData[monthKey].profit -= (trans.amount - cost); 
+        let initialStatsPayload = {
+            stk: itemQtyValue,
+            uC: itemPriceValue,
+            vv: itemTotalValue,
+            qS: 0,
+            rr: 0
+        };
+        
+        itemStatsMapObject[itemNameString] = initialStatsPayload;
+    }
+    
+    for (let j = 0; j < allTransactions.length; j++) {
+        let currentTransactionObject = allTransactions[j];
+        let transactionDateString = currentTransactionObject.date;
+        
+        let doesYearMatch = isYearMatch(transactionDateString);
+        if (doesYearMatch === false) {
+            continue;
         }
+        
+        let transactionDateObject = new Date(transactionDateString);
+        
+        if (startDateObject !== null) {
+            if (transactionDateObject < startDateObject) {
+                continue;
+            }
+        }
+        
+        if (endDateObject !== null) {
+            if (transactionDateObject > endDateObject) {
+                continue;
+            }
+        }
+
+        let transactionMonthLocaleString = transactionDateObject.toLocaleString('default', {month:'short', year:'numeric'});
+        
+        let existingMonthObject = monthlyStatsMapObject[transactionMonthLocaleString];
+        if (!existingMonthObject) {
+            let initialMonthPayload = {
+                ss: 0,
+                pp: 0
+            };
+            monthlyStatsMapObject[transactionMonthLocaleString] = initialMonthPayload;
+        }
+
+        let transactionQtyValue = currentTransactionObject.qty;
+        let parsedQtyValue = Number(transactionQtyValue);
+        let finalQtyValue = 0;
+        if (!isNaN(parsedQtyValue)) {
+            finalQtyValue = parsedQtyValue;
+        }
+        
+        let transactionAmountValue = currentTransactionObject.amount;
+        let parsedAmountValue = Number(transactionAmountValue);
+        let finalAmountValue = 0;
+        if (!isNaN(parsedAmountValue)) {
+            finalAmountValue = parsedAmountValue;
+        }
+        
+        let transactionTypeString = currentTransactionObject.type;
+        let transactionItemName = currentTransactionObject.item;
+        
+        if (transactionTypeString === 'Sale') {
+            revenueAccumulatorValue = revenueAccumulatorValue + finalAmountValue;
+            
+            let currentMonthSalesValue = monthlyStatsMapObject[transactionMonthLocaleString].ss;
+            let updatedMonthSalesValue = currentMonthSalesValue + finalAmountValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].ss = updatedMonthSalesValue;
+            
+            let calculatedCostValue = 0;
+            let currentItemStatsObject = itemStatsMapObject[transactionItemName];
+            
+            if (currentItemStatsObject) {
+                let itemUnitCostValue = currentItemStatsObject.uC;
+                calculatedCostValue = itemUnitCostValue * finalQtyValue;
+                
+                let currentItemQtySoldValue = currentItemStatsObject.qS;
+                let updatedItemQtySoldValue = currentItemQtySoldValue + finalQtyValue;
+                itemStatsMapObject[transactionItemName].qS = updatedItemQtySoldValue;
+                
+                let currentItemRevenueValue = currentItemStatsObject.rr;
+                let updatedItemRevenueValue = currentItemRevenueValue + finalAmountValue;
+                itemStatsMapObject[transactionItemName].rr = updatedItemRevenueValue;
+            }
+            
+            costOfGoodsAccumulatorValue = costOfGoodsAccumulatorValue + calculatedCostValue;
+            
+            let currentTransactionProfitValue = finalAmountValue - calculatedCostValue;
+            let currentMonthProfitValue = monthlyStatsMapObject[transactionMonthLocaleString].pp;
+            let updatedMonthProfitValue = currentMonthProfitValue + currentTransactionProfitValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].pp = updatedMonthProfitValue;
+            
+        } else if (transactionTypeString === 'Cosmetic Sale') {
+            revenueAccumulatorValue = revenueAccumulatorValue + finalAmountValue;
+            
+            let currentMonthSalesValue = monthlyStatsMapObject[transactionMonthLocaleString].ss;
+            let updatedMonthSalesValue = currentMonthSalesValue + finalAmountValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].ss = updatedMonthSalesValue;
+            
+            let transactionCostValue = currentTransactionObject.cost;
+            let parsedTransactionCostValue = parseFloat(transactionCostValue);
+            let finalTransactionCostValue = 0;
+            if (!isNaN(parsedTransactionCostValue)) {
+                finalTransactionCostValue = parsedTransactionCostValue;
+            }
+            
+            let calculatedCostValue = finalTransactionCostValue * finalQtyValue;
+            costOfGoodsAccumulatorValue = costOfGoodsAccumulatorValue + calculatedCostValue;
+            
+            let currentTransactionProfitValue = finalAmountValue - calculatedCostValue;
+            let currentMonthProfitValue = monthlyStatsMapObject[transactionMonthLocaleString].pp;
+            let updatedMonthProfitValue = currentMonthProfitValue + currentTransactionProfitValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].pp = updatedMonthProfitValue;
+            
+        } else if (transactionTypeString === 'Sale Return') {
+            revenueAccumulatorValue = revenueAccumulatorValue - finalAmountValue;
+            
+            let currentMonthSalesValue = monthlyStatsMapObject[transactionMonthLocaleString].ss;
+            let updatedMonthSalesValue = currentMonthSalesValue - finalAmountValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].ss = updatedMonthSalesValue;
+            
+            let calculatedCostValue = 0;
+            let currentItemStatsObject = itemStatsMapObject[transactionItemName];
+            
+            if (currentItemStatsObject) {
+                let itemUnitCostValue = currentItemStatsObject.uC;
+                calculatedCostValue = itemUnitCostValue * finalQtyValue;
+                
+                let currentItemQtySoldValue = currentItemStatsObject.qS;
+                let updatedItemQtySoldValue = currentItemQtySoldValue - finalQtyValue;
+                itemStatsMapObject[transactionItemName].qS = updatedItemQtySoldValue;
+                
+                let currentItemRevenueValue = currentItemStatsObject.rr;
+                let updatedItemRevenueValue = currentItemRevenueValue - finalAmountValue;
+                itemStatsMapObject[transactionItemName].rr = updatedItemRevenueValue;
+            }
+            
+            costOfGoodsAccumulatorValue = costOfGoodsAccumulatorValue - calculatedCostValue;
+            
+            let currentTransactionProfitValue = finalAmountValue - calculatedCostValue;
+            let currentMonthProfitValue = monthlyStatsMapObject[transactionMonthLocaleString].pp;
+            let updatedMonthProfitValue = currentMonthProfitValue - currentTransactionProfitValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].pp = updatedMonthProfitValue;
+            
+        } else if (transactionTypeString === 'Cosmetic Return') {
+            revenueAccumulatorValue = revenueAccumulatorValue - finalAmountValue;
+            
+            let currentMonthSalesValue = monthlyStatsMapObject[transactionMonthLocaleString].ss;
+            let updatedMonthSalesValue = currentMonthSalesValue - finalAmountValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].ss = updatedMonthSalesValue;
+            
+            let transactionCostValue = currentTransactionObject.cost;
+            let parsedTransactionCostValue = parseFloat(transactionCostValue);
+            let finalTransactionCostValue = 0;
+            if (!isNaN(parsedTransactionCostValue)) {
+                finalTransactionCostValue = parsedTransactionCostValue;
+            }
+            
+            let calculatedCostValue = finalTransactionCostValue * finalQtyValue;
+            costOfGoodsAccumulatorValue = costOfGoodsAccumulatorValue - calculatedCostValue;
+            
+            let currentTransactionProfitValue = finalAmountValue - calculatedCostValue;
+            let currentMonthProfitValue = monthlyStatsMapObject[transactionMonthLocaleString].pp;
+            let updatedMonthProfitValue = currentMonthProfitValue - currentTransactionProfitValue;
+            monthlyStatsMapObject[transactionMonthLocaleString].pp = updatedMonthProfitValue;
+        }
+    }
+    
+    let anaRevenueElement = document.getElementById('ana-revenue');
+    if (anaRevenueElement) {
+        let totalProfitAmountValue = revenueAccumulatorValue - costOfGoodsAccumulatorValue;
+        
+        let marginPercentageString = "0";
+        if (revenueAccumulatorValue > 0) {
+            let marginRatioValue = totalProfitAmountValue / revenueAccumulatorValue;
+            let marginPercentageValue = marginRatioValue * 100;
+            let fixedMarginPercentage = marginPercentageValue.toFixed(1);
+            marginPercentageString = fixedMarginPercentage;
+        }
+        
+        let fixedRevenueAccumulator = revenueAccumulatorValue.toFixed(2);
+        anaRevenueElement.innerText = `₹${fixedRevenueAccumulator}`;
+        
+        let anaProfitElement = document.getElementById('ana-profit');
+        let fixedTotalProfitAmount = totalProfitAmountValue.toFixed(2);
+        anaProfitElement.innerText = `₹${fixedTotalProfitAmount}`;
+        
+        let anaMarginElement = document.getElementById('ana-margin');
+        anaMarginElement.innerText = `${marginPercentageString}%`;
+        
+        let anaStockElement = document.getElementById('ana-stock');
+        let totalInventoryUnitsCount = 0;
+        
+        for (let k = 0; k < allInventory.length; k++) {
+            let loopInventoryItem = allInventory[k];
+            let loopInventoryItemQty = loopInventoryItem.qty;
+            let parsedInventoryItemQty = Number(loopInventoryItemQty);
+            if (!isNaN(parsedInventoryItemQty)) {
+                totalInventoryUnitsCount = totalInventoryUnitsCount + parsedInventoryItemQty;
+            }
+        }
+        
+        anaStockElement.innerText = totalInventoryUnitsCount;
+    }
+
+    let totalInventoryValueAccumulator = 0;
+    let inventoryStatsKeysArray = Object.keys(itemStatsMapObject);
+    let inventoryStatsValuesArray = [];
+    
+    for (let m = 0; m < inventoryStatsKeysArray.length; m++) {
+        let currentItemKeyString = inventoryStatsKeysArray[m];
+        let currentItemStatsObject = itemStatsMapObject[currentItemKeyString];
+        let currentItemTotalValue = currentItemStatsObject.vv;
+        
+        totalInventoryValueAccumulator = totalInventoryValueAccumulator + currentItemTotalValue;
+        
+        let payloadObject = {
+            n: currentItemKeyString,
+            v: currentItemTotalValue
+        };
+        
+        inventoryStatsValuesArray.push(payloadObject);
+    }
+    
+    inventoryStatsValuesArray.sort(function(a, b) {
+        return b.v - a.v;
     });
     
-    let profit = revenue - cogs; 
-    let margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0; 
-    let totalStock = allInventory.reduce((acc, curr) => acc + Number(curr.qty || 0), 0);
+    let abcTotalsObject = {
+        A: 0,
+        B: 0,
+        C: 0
+    };
     
-    if(document.getElementById('ana-revenue')) {
-        document.getElementById('ana-revenue').innerText = `₹${revenue.toFixed(2)}`; 
-        document.getElementById('ana-profit').innerText = `₹${profit.toFixed(2)}`; 
-        document.getElementById('ana-margin').innerText = `${margin}%`; 
-        document.getElementById('ana-stock').innerText = totalStock;
+    let abcHtmlContentStringArray = [];
+    let cumulativeValueAccumulator = 0;
+    
+    for (let n = 0; n < inventoryStatsValuesArray.length; n++) {
+        let currentInventoryStatObject = inventoryStatsValuesArray[n];
+        let currentInventoryStatValue = currentInventoryStatObject.v;
+        
+        cumulativeValueAccumulator = cumulativeValueAccumulator + currentInventoryStatValue;
+        
+        let cumulativePercentageValue = 0;
+        if (totalInventoryValueAccumulator > 0) {
+            cumulativePercentageValue = cumulativeValueAccumulator / totalInventoryValueAccumulator;
+        }
+        
+        let abcCategoryClassString = 'C';
+        let abcCategoryColorString = 'text-danger';
+        
+        if (cumulativePercentageValue <= 0.7) {
+            let currentATotal = abcTotalsObject.A;
+            let updatedATotal = currentATotal + currentInventoryStatValue;
+            abcTotalsObject.A = updatedATotal;
+            
+            abcCategoryClassString = 'A';
+            abcCategoryColorString = 'text-success';
+        } else if (cumulativePercentageValue <= 0.9) {
+            let currentBTotal = abcTotalsObject.B;
+            let updatedBTotal = currentBTotal + currentInventoryStatValue;
+            abcTotalsObject.B = updatedBTotal;
+            
+            abcCategoryClassString = 'B';
+            abcCategoryColorString = 'text-warning';
+        } else {
+            let currentCTotal = abcTotalsObject.C;
+            let updatedCTotal = currentCTotal + currentInventoryStatValue;
+            abcTotalsObject.C = updatedCTotal;
+        }
+        
+        let currentItemNameString = currentInventoryStatObject.n;
+        let fixedStatValueString = currentInventoryStatValue.toFixed(2);
+        let fixedPercentageValueString = (cumulativePercentageValue * 100).toFixed(1);
+        
+        let abcRowHtmlString = `
+            <tr>
+                <td class="py-2 px-4 truncate max-w-xs">${currentItemNameString}</td>
+                <td class="py-2 px-4">₹${fixedStatValueString}</td>
+                <td class="py-2 px-4 font-mono">${fixedPercentageValueString}%</td>
+                <td class="py-2 px-4 font-black ${abcCategoryColorString}">${abcCategoryClassString}</td>
+            </tr>
+        `;
+        
+        abcHtmlContentStringArray.push(abcRowHtmlString);
     }
     
-    let totalInvValue = 0; let abcArray = []; 
-    for (const[name, data] of Object.entries(itemStats)) { 
-        totalInvValue += data.invValue; abcArray.push({ name, value: data.invValue }); 
-    } 
-    abcArray.sort((a,b) => b.value - a.value);
+    let tableAbcTbodyElement = document.querySelector('#table-abc tbody');
+    if (tableAbcTbodyElement) {
+        let joinedAbcHtmlContent = abcHtmlContentStringArray.join('');
+        tableAbcTbodyElement.innerHTML = joinedAbcHtmlContent;
+    }
     
-    let cumValue = 0; let abcTotals = { A: 0, B: 0, C: 0 }; let abcHtml =[];
-    abcArray.forEach(item => { 
-        cumValue += item.value; 
-        let pct = totalInvValue > 0 ? cumValue / totalInvValue : 0; 
-        let category = 'C'; let catClass = 'text-danger'; 
-        if(pct <= 0.70) { abcTotals.A += item.value; category = 'A'; catClass = 'text-success'; } 
-        else if (pct <= 0.90) { abcTotals.B += item.value; category = 'B'; catClass = 'text-warning'; } 
-        else { abcTotals.C += item.value; category = 'C'; } 
-        abcHtml.push(`<tr><td class="py-3 px-4">${item.name}</td><td class="py-3 px-4">₹${item.value.toFixed(2)}</td><td class="py-3 px-4">${(pct * 100).toFixed(1)}%</td><td class="py-3 px-4 font-bold ${catClass}">${category}</td></tr>`); 
+    let filterTopSellingInputElement = document.getElementById('filter-top-selling');
+    let filterTopSellingValueString = "";
+    if (filterTopSellingInputElement) {
+        filterTopSellingValueString = filterTopSellingInputElement.value;
+    }
+    
+    let topSellingHtmlContentStringArray = [];
+    let topSellingKeysArray = Object.keys(itemStatsMapObject);
+    let topSellingValuesArray = [];
+    
+    for (let p = 0; p < topSellingKeysArray.length; p++) {
+        let currentKeyString = topSellingKeysArray[p];
+        let currentStatsObject = itemStatsMapObject[currentKeyString];
+        let currentQtySoldValue = currentStatsObject.qS;
+        
+        let payloadObject = {
+            n: currentKeyString,
+            sq: currentQtySoldValue
+        };
+        
+        topSellingValuesArray.push(payloadObject);
+    }
+    
+    topSellingValuesArray.sort(function(a, b) {
+        return b.sq - a.sq;
     });
-    if(document.querySelector('#table-abc tbody')) document.querySelector('#table-abc tbody').innerHTML = abcHtml.join('');
     
-    const filterTop = document.getElementById('filter-top-selling')?.value; 
-    let topHtml =[]; 
-    let sortedTop = Object.keys(itemStats).map(k => ({name: k, sold: itemStats[k].qtySold})).sort((a,b) => b.sold - a.sold); 
-    if(filterTop === 'Top10') sortedTop = sortedTop.slice(0, 10); 
-    sortedTop.forEach(item => { 
-        if(item.sold > 0 || filterTop === 'All') topHtml.push(`<tr><td class="py-2 px-3">${item.name}</td><td class="py-2 px-3 text-right font-bold text-success">${item.sold}</td></tr>`); 
-    }); 
-    if(document.getElementById('tbody-top-selling')) document.getElementById('tbody-top-selling').innerHTML = topHtml.join('');
-    
-    const filterInv = document.getElementById('filter-inv-status')?.value; 
-    let invHtml =[]; 
-    let sortedInv = Object.keys(itemStats).map(k => ({name: k, stock: itemStats[k].stock})).sort((a,b) => a.stock - b.stock); 
-    sortedInv.forEach(item => { 
-        if (filterInv === 'Low' && item.stock > 3) return; 
-        invHtml.push(`<tr><td class="py-2 px-3">${item.name}</td><td class="py-2 px-3 text-right ${item.stock <= 3 ? 'text-danger font-bold' : ''}">${item.stock}</td></tr>`); 
-    }); 
-    if(document.getElementById('tbody-inv-status')) document.getElementById('tbody-inv-status').innerHTML = invHtml.join('');
-    
-    let fsnTotals = { F: 0, S: 0, N: 0 }; 
-    let matrixRows =[]; 
-    let maxQtySold = Math.max(...Object.values(itemStats).map(i => i.qtySold), 0); 
-    let maxRev = Math.max(...Object.values(itemStats).map(i => i.totalRevenue), 0);
-    
-    for (const[name, data] of Object.entries(itemStats)) {
-        let FSN = 'N'; 
-        if (data.qtySold > 0) FSN = data.qtySold >= (maxQtySold * 0.5) ? 'F' : 'S'; 
-        fsnTotals[FSN] += data.stock;
-        
-        let HMV = 'V'; 
-        if (data.totalRevenue > 0) HMV = data.totalRevenue >= (maxRev * 0.5) ? 'H' : 'M'; 
-        let actClass = "";
-        
-        if(FSN==='F' && HMV==='H') actClass = "⭐ Stars"; 
-        else if(FSN==='S' && HMV==='H') actClass = "💰 Cash Cows"; 
-        else if(FSN==='N' && HMV==='H') actClass = "🔥 Dead Weight"; 
-        else if(FSN==='F' && HMV==='M') actClass = "🚀 Drivers"; 
-        else if(FSN==='S' && HMV==='M') actClass = "🐢 Slugs"; 
-        else if(FSN==='N' && HMV==='M') actClass = "💤 Sleepers"; 
-        else if(FSN==='F' && HMV==='V') actClass = "🏃 Runners"; 
-        else if(FSN==='S' && HMV==='V') actClass = "📦 Basics"; 
-        else if(FSN==='N' && HMV==='V') actClass = "🗑️ Dead Stock"; 
-        
-        matrixRows.push({ name, stock: data.stock, invValue: data.invValue, rev: data.totalRevenue, FSN, HMV, actClass });
+    if (filterTopSellingValueString === 'Top10') {
+        topSellingValuesArray = topSellingValuesArray.slice(0, 10);
     }
     
-    const filterClass = document.getElementById('ana-class-filter')?.value; 
-    let matrixHtml =[]; 
-    matrixRows.sort((a,b) => b.rev - a.rev).forEach(row => { 
-        if(filterClass !== "All" && !row.actClass.includes(filterClass)) return; 
-        let fsnColor = row.FSN==='F'?'text-success':(row.FSN==='S'?'text-warning':'text-danger'); 
-        let hmvColor = row.HMV==='H'?'text-primary':(row.HMV==='M'?'text-purple-500':'text-gray-500'); 
-        matrixHtml.push(`<tr><td class="py-3 px-4 font-bold">${row.name}</td><td class="py-3 px-4">${row.stock}</td><td class="py-3 px-4">₹${row.invValue.toFixed(2)}</td><td class="py-3 px-4">₹${row.rev.toFixed(2)}</td><td class="py-3 px-4 font-bold ${fsnColor}">${row.FSN}</td><td class="py-3 px-4 font-bold ${hmvColor}">${row.HMV}</td><td class="py-3 px-4">${row.actClass}</td></tr>`); 
-    }); 
-    if(document.querySelector('#table-matrix tbody')) document.querySelector('#table-matrix tbody').innerHTML = matrixHtml.join('');
+    for (let q = 0; q < topSellingValuesArray.length; q++) {
+        let currentTopSellingObject = topSellingValuesArray[q];
+        let currentQtySoldValue = currentTopSellingObject.sq;
+        let currentItemNameString = currentTopSellingObject.n;
+        
+        let isQtyGreaterThanZero = currentQtySoldValue > 0;
+        let isFilterAll = filterTopSellingValueString === 'All';
+        
+        let isConditionMet = false;
+        if (isQtyGreaterThanZero === true) {
+            isConditionMet = true;
+        } else if (isFilterAll === true) {
+            isConditionMet = true;
+        }
+        
+        if (isConditionMet === true) {
+            let rowHtmlString = `
+                <tr>
+                    <td class="py-1.5 px-3 truncate max-w-[200px] text-[13px] font-medium" title="${currentItemNameString}">${currentItemNameString}</td>
+                    <td class="py-1.5 px-3 font-mono font-bold text-right text-success">
+                        <span class="bg-success/10 px-2 py-0.5 rounded shadow-sm border border-success/30">${currentQtySoldValue}</span>
+                    </td>
+                </tr>
+            `;
+            topSellingHtmlContentStringArray.push(rowHtmlString);
+        }
+    }
     
-    lastMonthlyData = monthlyData; 
-    lastAbcTotals = abcTotals; 
-    lastFsnTotals = fsnTotals; 
-    renderCharts(monthlyData, abcTotals, fsnTotals);
+    let tbodyTopSellingElement = document.getElementById('tbody-top-selling');
+    if (tbodyTopSellingElement) {
+        let joinedTopSellingHtmlContent = topSellingHtmlContentStringArray.join('');
+        tbodyTopSellingElement.innerHTML = joinedTopSellingHtmlContent;
+    }
+    
+    let filterInvStatusInputElement = document.getElementById('filter-inv-status');
+    let filterInvStatusValueString = "";
+    if (filterInvStatusInputElement) {
+        filterInvStatusValueString = filterInvStatusInputElement.value;
+    }
+    
+    let invStatusHtmlContentStringArray = [];
+    let invStatusKeysArray = Object.keys(itemStatsMapObject);
+    let invStatusValuesArray = [];
+    
+    for (let r = 0; r < invStatusKeysArray.length; r++) {
+        let currentKeyString = invStatusKeysArray[r];
+        let currentStatsObject = itemStatsMapObject[currentKeyString];
+        let currentStockValue = currentStatsObject.stk;
+        
+        let payloadObject = {
+            n: currentKeyString,
+            sk: currentStockValue
+        };
+        
+        invStatusValuesArray.push(payloadObject);
+    }
+    
+    invStatusValuesArray.sort(function(a, b) {
+        return a.sk - b.sk;
+    });
+    
+    for (let s = 0; s < invStatusValuesArray.length; s++) {
+        let currentInvStatusObject = invStatusValuesArray[s];
+        let currentStockValue = currentInvStatusObject.sk;
+        let currentItemNameString = currentInvStatusObject.n;
+        
+        let isLowFilterActive = filterInvStatusValueString === 'Low';
+        let isStockGreaterThanThree = currentStockValue > 3;
+        
+        let shouldSkipIteration = false;
+        if (isLowFilterActive === true) {
+            if (isStockGreaterThanThree === true) {
+                shouldSkipIteration = true;
+            }
+        }
+        
+        if (shouldSkipIteration === false) {
+            let rowHtmlString = `
+                <tr>
+                    <td class="py-1.5 px-3 truncate max-w-[200px] text-[13px] font-medium" title="${currentItemNameString}">${currentItemNameString}</td>
+                    <td class="py-1.5 px-3 text-right font-mono font-bold text-danger">
+                        <span class="bg-red-50 px-2 py-0.5 rounded border shadow-sm">${currentStockValue}</span>
+                    </td>
+                </tr>
+            `;
+            invStatusHtmlContentStringArray.push(rowHtmlString);
+        }
+    }
+    
+    let tbodyInvStatusElement = document.getElementById('tbody-inv-status');
+    if (tbodyInvStatusElement) {
+        let joinedInvStatusHtmlContent = invStatusHtmlContentStringArray.join('');
+        tbodyInvStatusElement.innerHTML = joinedInvStatusHtmlContent;
+    }
+
+    let fsnTotalsObject = {
+        F: 0,
+        S: 0,
+        N: 0
+    };
+    
+    let matrixValuesArray = [];
+    
+    let qtySoldValuesArray = [];
+    let revenueValuesArray = [];
+    
+    let statsKeysArray = Object.keys(itemStatsMapObject);
+    for (let t = 0; t < statsKeysArray.length; t++) {
+        let currentKeyString = statsKeysArray[t];
+        let currentStatsObject = itemStatsMapObject[currentKeyString];
+        
+        let currentQtySoldValue = currentStatsObject.qS;
+        qtySoldValuesArray.push(currentQtySoldValue);
+        
+        let currentRevenueValue = currentStatsObject.rr;
+        revenueValuesArray.push(currentRevenueValue);
+    }
+    
+    let maxQtySoldValue = Math.max(...qtySoldValuesArray, 0);
+    let maxRevenueValue = Math.max(...revenueValuesArray, 0);
+    
+    for (let u = 0; u < statsKeysArray.length; u++) {
+        let currentKeyString = statsKeysArray[u];
+        let currentStatsObject = itemStatsMapObject[currentKeyString];
+        
+        let fsnCategoryString = 'N';
+        let currentQtySoldValue = currentStatsObject.qS;
+        
+        if (currentQtySoldValue > 0) {
+            let halfMaxQtySoldValue = maxQtySoldValue * 0.5;
+            if (currentQtySoldValue >= halfMaxQtySoldValue) {
+                fsnCategoryString = 'F';
+            } else {
+                fsnCategoryString = 'S';
+            }
+        }
+        
+        let currentStockValue = currentStatsObject.stk;
+        let currentFsnTotal = fsnTotalsObject[fsnCategoryString];
+        let updatedFsnTotal = currentFsnTotal + currentStockValue;
+        fsnTotalsObject[fsnCategoryString] = updatedFsnTotal;
+        
+        let hmvCategoryString = 'V';
+        let currentRevenueValue = currentStatsObject.rr;
+        
+        if (currentRevenueValue > 0) {
+            let halfMaxRevenueValue = maxRevenueValue * 0.5;
+            if (currentRevenueValue >= halfMaxRevenueValue) {
+                hmvCategoryString = 'H';
+            } else {
+                hmvCategoryString = 'M';
+            }
+        }
+        
+        let classificationString = "";
+        
+        if (fsnCategoryString === 'F') {
+            if (hmvCategoryString === 'H') {
+                classificationString = "⭐ Stars";
+            } else if (hmvCategoryString === 'M') {
+                classificationString = "🚀 Drivers";
+            } else if (hmvCategoryString === 'V') {
+                classificationString = "🏃 Runners";
+            }
+        } else if (fsnCategoryString === 'S') {
+            if (hmvCategoryString === 'H') {
+                classificationString = "💰 Cash Cows";
+            } else if (hmvCategoryString === 'M') {
+                classificationString = "🐢 Slugs";
+            } else if (hmvCategoryString === 'V') {
+                classificationString = "📦 Basics";
+            }
+        } else if (fsnCategoryString === 'N') {
+            if (hmvCategoryString === 'H') {
+                classificationString = "🔥 Dead Weight";
+            } else if (hmvCategoryString === 'M') {
+                classificationString = "💤 Sleepers";
+            } else if (hmvCategoryString === 'V') {
+                classificationString = "🗑️ Dead Stock";
+            }
+        }
+        
+        let currentTotalValue = currentStatsObject.vv;
+        
+        let payloadObject = {
+            n: currentKeyString,
+            s: currentStockValue,
+            v: currentTotalValue,
+            r: currentRevenueValue,
+            F: fsnCategoryString,
+            H: hmvCategoryString,
+            C: classificationString
+        };
+        
+        matrixValuesArray.push(payloadObject);
+    }
+    
+    let anaClassFilterInputElement = document.getElementById('ana-class-filter');
+    let anaClassFilterValueString = "";
+    if (anaClassFilterInputElement) {
+        anaClassFilterValueString = anaClassFilterInputElement.value;
+    }
+    
+    let matrixHtmlContentStringArray = [];
+    
+    matrixValuesArray.sort(function(a, b) {
+        return b.r - a.r;
+    });
+    
+    for (let v = 0; v < matrixValuesArray.length; v++) {
+        let currentMatrixObject = matrixValuesArray[v];
+        let currentClassificationString = currentMatrixObject.C;
+        
+        let isFilterAll = anaClassFilterValueString === "All";
+        let doesIncludeClassification = currentClassificationString.includes(anaClassFilterValueString);
+        
+        let shouldSkipIteration = false;
+        if (isFilterAll === false) {
+            if (doesIncludeClassification === false) {
+                shouldSkipIteration = true;
+            }
+        }
+        
+        if (shouldSkipIteration === false) {
+            let fsnCategoryString = currentMatrixObject.F;
+            let fsnColorClassString = "";
+            if (fsnCategoryString === 'F') {
+                fsnColorClassString = 'text-success';
+            } else if (fsnCategoryString === 'S') {
+                fsnColorClassString = 'text-warning';
+            } else {
+                fsnColorClassString = 'text-danger';
+            }
+            
+            let hmvCategoryString = currentMatrixObject.H;
+            let hmvColorClassString = "";
+            if (hmvCategoryString === 'H') {
+                hmvColorClassString = 'text-primary';
+            } else if (hmvCategoryString === 'M') {
+                hmvColorClassString = 'text-purple-500';
+            } else {
+                hmvColorClassString = 'text-gray-400';
+            }
+            
+            let currentItemNameString = currentMatrixObject.n;
+            let currentStockValue = currentMatrixObject.s;
+            
+            let currentTotalValue = currentMatrixObject.v;
+            let fixedTotalValueString = currentTotalValue.toFixed(2);
+            
+            let currentRevenueValue = currentMatrixObject.r;
+            let fixedRevenueValueString = currentRevenueValue.toFixed(2);
+            
+            let rowHtmlString = `
+                <tr class="border-b dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-800 transition">
+                    <td class="py-3 px-4 font-bold text-sm tracking-tight truncate max-w-xs" title="${currentItemNameString}">${currentItemNameString}</td>
+                    <td class="py-3 px-4 font-mono font-medium text-center">${currentStockValue}</td>
+                    <td class="py-3 px-4 font-mono tracking-tight text-right text-gray-500 dark:text-gray-400">₹${fixedTotalValueString}</td>
+                    <td class="py-3 px-4 font-mono font-bold text-success text-right tracking-tight">₹${fixedRevenueValueString}</td>
+                    <td class="py-3 px-4 font-bold text-center ${fsnColorClassString}">${fsnCategoryString}</td>
+                    <td class="py-3 px-4 font-bold text-center ${hmvColorClassString}">${hmvCategoryString}</td>
+                    <td class="py-3 px-4 font-semibold text-[13px] text-gray-700 dark:text-gray-200">
+                        <span class="bg-gray-100 dark:bg-gray-700/50 px-2 py-0.5 rounded shadow-sm">${currentClassificationString}</span>
+                    </td>
+                </tr>
+            `;
+            
+            matrixHtmlContentStringArray.push(rowHtmlString);
+        }
+    }
+    
+    let tableMatrixTbodyElement = document.querySelector('#table-matrix tbody');
+    if (tableMatrixTbodyElement) {
+        let joinedMatrixHtmlContent = matrixHtmlContentStringArray.join('');
+        tableMatrixTbodyElement.innerHTML = joinedMatrixHtmlContent;
+    }
+
+    lastMonthlyData = monthlyStatsMapObject;
+    lastAbcTotals = abcTotalsObject;
+    lastFsnTotals = fsnTotalsObject;
+    
+    renderCharts(monthlyStatsMapObject, abcTotalsObject, fsnTotalsObject);
 }
 
-function renderCharts(monthlyData, abcTotals, fsnTotals) {
-    if(!window.Chart) return;
-    if(myChartMonthly) myChartMonthly.destroy(); 
-    if(myChartABC) myChartABC.destroy(); 
-    if(myChartFSN) myChartFSN.destroy();
-    
-    const labelsMonth = Object.keys(monthlyData).reverse(); 
-    const dataSales = labelsMonth.map(m => monthlyData[m].sales); 
-    const dataProfit = labelsMonth.map(m => monthlyData[m].profit); 
-    const isDark = document.body.classList.contains('dark-mode'); 
-    const chartTextColor = isDark ? '#e0e0e0' : '#2c3e50'; 
-    Chart.defaults.color = chartTextColor;
-    
-    const monthlyCtx = document.getElementById('chart-monthly');
-    if(monthlyCtx) {
-        myChartMonthly = new Chart(monthlyCtx, { 
-            type: 'bar', 
-            data: { labels: labelsMonth.length ? labelsMonth :["No Data"], datasets:[{ label: 'Sales (₹)', data: dataSales, backgroundColor: '#3b82f6' }, { label: 'Profit (₹)', data: dataProfit, backgroundColor: '#10b981' }] }, 
-            options: { responsive: true, plugins: { title: { display: true, text: 'Monthly Sales vs Profit', color: chartTextColor } }, animation: { duration: 0 } } 
-        });
+function renderCharts(monthlyDataMapObject, abcTotalsObject, fsnTotalsObject) {
+    if (!window.Chart) {
+        return;
     }
     
-    const abcCtx = document.getElementById('chart-abc');
-    if(abcCtx) {
-        myChartABC = new Chart(abcCtx, { 
-            type: 'doughnut', 
-            data: { labels:['A (Top Value)', 'B (Medium)', 'C (Low)'], datasets: [{ data:[abcTotals.A, abcTotals.B, abcTotals.C], backgroundColor:['#10b981', '#f59e0b', '#ef4444'], borderWidth: 0 }] }, 
-            options: { responsive: true, plugins: { title: { display: true, text: 'Inventory Value by ABC', color: chartTextColor } }, animation: { duration: 0 } } 
-        });
+    if (myChartMonthly) {
+        myChartMonthly.destroy();
+    }
+    if (myChartABC) {
+        myChartABC.destroy();
+    }
+    if (myChartFSN) {
+        myChartFSN.destroy();
     }
     
-    const fsnCtx = document.getElementById('chart-fsn');
-    if(fsnCtx) {
-        myChartFSN = new Chart(fsnCtx, { 
-            type: 'pie', 
-            data: { labels:['Fast Moving', 'Slow Moving', 'Non-Moving'], datasets: [{ data:[fsnTotals.F, fsnTotals.S, fsnTotals.N], backgroundColor:['#3b82f6', '#f59e0b', '#9ca3af'], borderWidth: 0 }] }, 
-            options: { responsive: true, plugins: { title: { display: true, text: 'Stock Units by FSN', color: chartTextColor } }, animation: { duration: 0 } } 
-        });
+    let isDarkModeActive = document.body.classList.contains('dark-mode');
+    let chartColorString = '#334155';
+    if (isDarkModeActive === true) {
+        chartColorString = '#e2e8f0';
+    }
+    
+    Chart.defaults.color = chartColorString;
+    Chart.defaults.font.family = 'Inter';
+    
+    let monthlyDataKeysArray = Object.keys(monthlyDataMapObject);
+    let reversedMonthlyDataKeysArray = monthlyDataKeysArray.reverse();
+    
+    let salesDataArray = [];
+    let profitDataArray = [];
+    
+    for (let i = 0; i < reversedMonthlyDataKeysArray.length; i++) {
+        let currentKeyString = reversedMonthlyDataKeysArray[i];
+        let currentMonthObject = monthlyDataMapObject[currentKeyString];
+        
+        let currentSalesValue = currentMonthObject.ss;
+        salesDataArray.push(currentSalesValue);
+        
+        let currentProfitValue = currentMonthObject.pp;
+        profitDataArray.push(currentProfitValue);
+    }
+    
+    let chartMonthlyElement = document.getElementById('chart-monthly');
+    if (chartMonthlyElement) {
+        let labelsArray = ["No Tx Found..."];
+        let keysCount = reversedMonthlyDataKeysArray.length;
+        if (keysCount > 0) {
+            labelsArray = reversedMonthlyDataKeysArray;
+        }
+        
+        let configObject = {
+            type: 'bar',
+            data: {
+                labels: labelsArray,
+                datasets: [
+                    {
+                        label: "Sale Velocity (₹)",
+                        data: salesDataArray,
+                        backgroundColor: "rgba(99, 102, 241, 0.8)",
+                        borderRadius: 4,
+                        borderSkipped: false
+                    },
+                    {
+                        label: "Net Extraction (₹)",
+                        data: profitDataArray,
+                        backgroundColor: "rgba(16, 185, 129, 0.8)",
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Monthly Vol.'
+                    }
+                },
+                animation: {
+                    duration: 0
+                }
+            }
+        };
+        
+        myChartMonthly = new Chart(chartMonthlyElement, configObject);
+    }
+    
+    let chartAbcElement = document.getElementById('chart-abc');
+    if (chartAbcElement) {
+        let aTotalValue = abcTotalsObject.A;
+        let bTotalValue = abcTotalsObject.B;
+        let cTotalValue = abcTotalsObject.C;
+        
+        let configObject = {
+            type: 'doughnut',
+            data: {
+                labels: ['A (70%)', 'B (20%)', 'C (10%)'],
+                datasets: [
+                    {
+                        data: [aTotalValue, bTotalValue, cTotalValue],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                cutout: '70%',
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'ABC Value'
+                    }
+                },
+                animation: {
+                    duration: 0
+                }
+            }
+        };
+        
+        myChartABC = new Chart(chartAbcElement, configObject);
+    }
+    
+    let chartFsnElement = document.getElementById('chart-fsn');
+    if (chartFsnElement) {
+        let fTotalValue = fsnTotalsObject.F;
+        let sTotalValue = fsnTotalsObject.S;
+        let nTotalValue = fsnTotalsObject.N;
+        
+        let configObject = {
+            type: 'pie',
+            data: {
+                labels: ['Fast', 'Slow', 'Non-Moving'],
+                datasets: [
+                    {
+                        data: [fTotalValue, sTotalValue, nTotalValue],
+                        backgroundColor: ['#3b82f6', '#f59e0b', '#9ca3af'],
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'FSN Units'
+                    }
+                },
+                animation: {
+                    duration: 0
+                }
+            }
+        };
+        
+        myChartFSN = new Chart(chartFsnElement, configObject);
     }
 }
 
-// ==========================================
-// 15. INVENTORY MANAGEMENT (Table, Add, Edit)
-// ==========================================
 function updateInventoryStats() {
-    let totalItems = allInventory.length; let outCount = 0; let lowCount = 0; let totalValue = 0;
-    allInventory.forEach(item => { 
-        const qty = Number(item.qty) || 0; 
-        const price = Number(item.price) || 0; 
-        totalValue += (qty * price); 
-        if (qty === 0) outCount++; else if (qty <= 2) lowCount++; 
-    });
+    let totalItemsCountValue = 0;
+    let totalValueAccumulatorValue = 0;
+    let outOfStockCountValue = 0;
+    let lowStockCountValue = 0;
     
-    if(document.getElementById('stat-inv-total')) {
-        document.getElementById('stat-inv-total').innerText = totalItems; 
-        document.getElementById('stat-inv-value').innerText = `₹${totalValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`; 
-        document.getElementById('stat-inv-out').innerText = outCount; 
-        document.getElementById('stat-inv-low').innerText = lowCount;
+    for (let i = 0; i < allInventory.length; i++) {
+        let currentInventoryItem = allInventory[i];
+        let currentItemQtyValue = currentInventoryItem.qty;
+        let currentItemPriceValue = currentInventoryItem.price;
+        
+        let currentItemTotalValue = currentItemQtyValue * currentItemPriceValue;
+        
+        totalItemsCountValue++;
+        totalValueAccumulatorValue = totalValueAccumulatorValue + currentItemTotalValue;
+        
+        if (currentItemQtyValue === 0) {
+            outOfStockCountValue++;
+        } else if (currentItemQtyValue <= 3) {
+            lowStockCountValue++;
+        }
+    }
+    
+    let statInvTotalElement = document.getElementById('stat-inv-total');
+    if (statInvTotalElement) {
+        statInvTotalElement.innerText = totalItemsCountValue;
+        
+        let statInvValueElement = document.getElementById('stat-inv-value');
+        let fixedTotalValueString = totalValueAccumulatorValue.toFixed(2);
+        statInvValueElement.innerText = `₹${fixedTotalValueString}`;
+        
+        let statInvOutElement = document.getElementById('stat-inv-out');
+        statInvOutElement.innerText = outOfStockCountValue;
+        
+        let statInvLowElement = document.getElementById('stat-inv-low');
+        statInvLowElement.innerText = lowStockCountValue;
     }
 }
 
 function renderInventoryTable() {
-    const tbody = document.querySelector('#table-inventory tbody');
-    if(!tbody) return;
+    let tbodyElement = document.querySelector('#table-inventory tbody');
+    if (!tbodyElement) {
+        return;
+    }
     
-    let rowsHtml =[]; 
-    const queryStr = currentInventorySearch.toLowerCase().trim();
-    let filtered = allInventory.filter(item => { 
-        const itemName = (item.name || "").toLowerCase(); 
-        const itemPart = (item.partNumber || "").toLowerCase(); 
-        const itemHsn = (item.hsn || "").toLowerCase();
-        const qty = Number(item.qty) || 0; 
-        if (queryStr && !itemName.includes(queryStr) && !itemPart.includes(queryStr) && !itemHsn.includes(queryStr)) return false; 
-        if (currentInventoryFilter === 'out' && qty !== 0) return false; 
-        if (currentInventoryFilter === 'low' && (qty === 0 || qty > 2)) return false; 
-        return true; 
-    });
+    let searchStringLower = currentInventorySearch.toLowerCase();
+    let htmlContentString = "";
     
-    filtered.forEach((item) => {
-        const itemName = item.name || "Unknown"; 
-        const itemPart = item.partNumber ? `<span class="text-[10px] text-gray-400 block -mt-1">PN: ${item.partNumber}</span>` : ''; 
-        const itemHsn = item.hsn ? `<span class="text-[10px] text-indigo-400 block">HSN: ${item.hsn}</span>` : '';
-        const itemQty = Number(item.qty) || 0; 
-        const itemPrice = Number(item.price) || 0; 
-        const stockValue = itemQty * itemPrice;
-        
-        let badgeHtml = ""; 
-        if (itemQty === 0) badgeHtml = `<span class="px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-full whitespace-nowrap">Out of stock</span>`; 
-        else if (itemQty <= 2) badgeHtml = `<span class="px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-full whitespace-nowrap">Low &mdash; ${itemQty} left</span>`; 
-        else badgeHtml = `<span class="px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full whitespace-nowrap">${itemQty} in stock</span>`;
-        
-        let gstBadge = item.hasGST ? `<span class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold uppercase">GST</span>` : '';
-        
-        rowsHtml.push(`<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"><td class="px-5 py-4"><div class="font-medium text-gray-900 dark:text-white flex items-center">${itemName} ${gstBadge}</div>${itemPart}${itemHsn}</td><td class="px-5 py-4 text-right text-gray-900 dark:text-gray-100 font-medium">${itemQty}</td><td class="px-5 py-4 text-right text-gray-900 dark:text-gray-100">₹${itemPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td class="px-5 py-4 text-right text-gray-600 dark:text-gray-400 font-medium">₹${stockValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td class="px-5 py-4 text-right">${badgeHtml}</td><td class="px-5 py-4 text-right"><div class="flex justify-end gap-2"><button class="btn-edit w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary transition-colors" data-id="${item.id}" data-name="${itemName}" data-qty="${itemQty}" data-price="${itemPrice}" data-gst="${item.hasGST ? 'true' : ''}" data-part="${item.partNumber || ''}" data-hsn="${item.hsn || ''}" title="Edit"><i class="fa-solid fa-pen pointer-events-none text-xs"></i></button><button class="btn-delete w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-danger hover:border-red-200 transition-colors" data-id="${item.id}" title="Delete"><i class="fa-solid fa-xmark pointer-events-none"></i></button></div></td></tr>`);
-    });
+    let filteredInventoryArray = [];
     
-    if (filtered.length === 0) rowsHtml.push(`<tr><td colspan="6" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">No items found.</td></tr>`); 
-    tbody.innerHTML = rowsHtml.join('');
-}
-
-document.getElementById('search-inventory')?.addEventListener('input', (e) => { 
-    currentInventorySearch = e.target.value; 
-    renderInventoryTable(); 
-});
-
-document.querySelectorAll('.inv-tab').forEach(tab => { 
-    tab.addEventListener('click', (e) => { 
-        document.querySelectorAll('.inv-tab').forEach(t => { 
-            t.classList.remove('active', 'bg-white', 'dark:bg-gray-600', 'text-primary', 'shadow-sm', 'border-gray-200', 'dark:border-gray-500'); 
-            t.classList.add('text-gray-500', 'dark:text-gray-400', 'border-transparent'); 
-        }); 
-        const activeBtn = e.target; 
-        activeBtn.classList.remove('text-gray-500', 'dark:text-gray-400', 'border-transparent'); 
-        activeBtn.classList.add('active', 'bg-white', 'dark:bg-gray-600', 'text-primary', 'shadow-sm', 'border-gray-200', 'dark:border-gray-500'); 
-        currentInventoryFilter = activeBtn.getAttribute('data-filter'); 
-        renderInventoryTable(); 
-    }); 
-});
-
-const inventoryForm = document.getElementById('form-inventory');
-if(inventoryForm) {
-    inventoryForm.addEventListener('submit', async (e) => {
-        e.preventDefault(); 
-        const name = document.getElementById('inv-name').value.trim(); 
-        const partNumber = document.getElementById('inv-part').value.trim(); 
-        let qty = parseInt(document.getElementById('inv-qty').value); 
-        let price = parseFloat(document.getElementById('inv-price').value); 
-        const hasGST = document.getElementById('inv-gst').checked;
+    for (let i = 0; i < allInventory.length; i++) {
+        let currentInventoryItem = allInventory[i];
+        let currentItemNameString = String(currentInventoryItem.name);
+        let lowerItemNameString = currentItemNameString.toLowerCase();
         
-        if (isNaN(qty)) qty = 0; if (isNaN(price)) price = 0;
-        const editId = inventoryForm.getAttribute('data-edit-id'); 
-        const existingHsn = inventoryForm.getAttribute('data-edit-hsn') || "";
+        let currentItemPartNumberString = String(currentInventoryItem.partNumber || '');
+        let lowerItemPartNumberString = currentItemPartNumberString.toLowerCase();
         
-        if (editId) { 
-            await updateDoc(doc(db, "inventory", editId), { name, qty, price, hasGST, partNumber, hsn: existingHsn }); 
-            resetInventoryForm(); 
-            showSuccessAnimation("Item Updated!"); 
-        } else { 
-            await addDoc(collection(db, "inventory"), { name, qty, price, hasGST, partNumber, hsn: "" }); 
-            inventoryForm.reset(); 
-            showSuccessAnimation("Item Added to Stock!"); 
+        let doesNameInclude = lowerItemNameString.includes(searchStringLower);
+        let doesPartNumberInclude = lowerItemPartNumberString.includes(searchStringLower);
+        
+        let isSearchMatch = false;
+        if (doesNameInclude === true) {
+            isSearchMatch = true;
+        } else if (doesPartNumberInclude === true) {
+            isSearchMatch = true;
         }
-    });
-}
-
-document.getElementById('btn-inv-cancel')?.addEventListener('click', resetInventoryForm);
-
-function resetInventoryForm() { 
-    if(!inventoryForm) return;
-    inventoryForm.reset(); 
-    inventoryForm.removeAttribute('data-edit-id'); 
-    inventoryForm.removeAttribute('data-edit-hsn'); 
-    document.getElementById('btn-inv-submit').innerText = "Save"; 
-    document.getElementById('inv-form-title').innerText = "Add new item"; 
-    document.getElementById('btn-inv-cancel').style.display = "none"; 
-}
-
-document.querySelector('#table-inventory tbody')?.addEventListener('click', async (e) => {
-    const btnDel = e.target.closest('.btn-delete'); 
-    if (btnDel) { 
-        if (confirm("Delete this item?")) { 
-            await deleteDoc(doc(db, "inventory", btnDel.getAttribute('data-id'))); 
-        } 
-    }
-    const btnEdit = e.target.closest('.btn-edit'); 
-    if (btnEdit) { 
-        document.getElementById('inv-name').value = btnEdit.getAttribute('data-name'); 
-        document.getElementById('inv-qty').value = btnEdit.getAttribute('data-qty'); 
-        document.getElementById('inv-price').value = btnEdit.getAttribute('data-price'); 
-        document.getElementById('inv-gst').checked = !!btnEdit.getAttribute('data-gst'); 
-        document.getElementById('inv-part').value = btnEdit.getAttribute('data-part') || ''; 
         
-        inventoryForm.setAttribute('data-edit-id', btnEdit.getAttribute('data-id')); 
-        inventoryForm.setAttribute('data-edit-hsn', btnEdit.getAttribute('data-hsn') || ''); 
+        let isSearchValid = searchStringLower !== "";
+        let shouldExcludeBySearch = false;
         
-        document.getElementById('btn-inv-submit').innerText = "Update"; 
-        document.getElementById('inv-form-title').innerText = `Edit item`; 
-        document.getElementById('btn-inv-cancel').style.display = "inline-block"; 
-        document.getElementById('inv-name').focus(); 
-        window.scrollTo({ top: 0, behavior: 'smooth' }); 
-    }
-});
-
-// ==========================================
-// 16. DATA MANAGEMENT (Settings & Excel)
-// ==========================================
-document.getElementById('btn-trigger-excel')?.addEventListener('click', () => { 
-    document.getElementById('excel-file').click(); 
-});
-
-document.getElementById('excel-file')?.addEventListener('change', async (e) => {
-    const file = e.target.files[0]; 
-    if(!file) return; 
-    if(!confirm("WARNING: This will DELETE all current inventory and replace it entirely with the data from the Excel file. Are you absolutely sure?")) { 
-        e.target.value = ''; return; 
-    }
-    
-    const btn = document.getElementById('btn-trigger-excel'); 
-    const ogText = btn.innerHTML; 
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-2xl"></i> <span class="text-sm">Importing...</span>`; 
-    btn.disabled = true;
-    
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        try {
-            const data = new Uint8Array(event.target.result); 
-            const workbook = XLSX.read(data, {type: 'array'}); 
-            const sheetName = workbook.SheetNames[0]; 
-            const sheet = workbook.Sheets[sheetName]; 
-            const json = XLSX.utils.sheet_to_json(sheet);
+        if (isSearchValid === true) {
+            if (isSearchMatch === false) {
+                shouldExcludeBySearch = true;
+            }
+        }
+        
+        if (shouldExcludeBySearch === false) {
+            let currentItemQtyValue = currentInventoryItem.qty;
             
-            for (let item of allInventory) { await deleteDoc(doc(db, "inventory", item.id)); }
+            let isOutFilterActive = currentInventoryFilter === 'out';
+            let isItemNotOut = currentItemQtyValue !== 0;
             
-            for(const row of json) {
-                const name = row['particulars'] || row['Particulars'] || row['Name'] || row['name']; 
-                const qtyStr = row['quantity'] || row['Quantity'] || row['qty']; 
-                const rateStr = row['rate'] || row['Rate'] || row['price']; 
-                const partStr = row['part'] || row['Part Number'] || row['PN']; 
-                const gstVal = row['gst'] || row['GST'];
-                const hsnVal = row['hsn'] || row['HSN Code'] || row['HSN'];
-                
-                if(name && name.trim() !== '') { 
-                    const qty = Number(qtyStr) || 0; 
-                    const price = Number(rateStr) || 0; 
-                    const hasGST = (String(gstVal).toLowerCase() === 'yes' || String(gstVal).toLowerCase() === 'true'); 
-                    const partNumber = partStr ? String(partStr).trim() : ''; 
-                    const hsn = hsnVal ? String(hsnVal).trim() : '';
-                    
-                    await addDoc(collection(db, "inventory"), { name: name.trim(), qty, price, hasGST, partNumber, hsn }); 
+            let shouldExcludeByOutFilter = false;
+            if (isOutFilterActive === true) {
+                if (isItemNotOut === true) {
+                    shouldExcludeByOutFilter = true;
                 }
-            } 
-            showSuccessAnimation("Excel Successfully Imported!");
-        } catch (error) { 
-            console.error(error); alert("An error occurred during import."); 
-        } finally { 
-            btn.innerHTML = ogText; btn.disabled = false; document.getElementById('excel-file').value = ''; 
-        }
-    }; 
-    reader.readAsArrayBuffer(file);
-});
-
-document.getElementById('btn-sync-drive')?.addEventListener('click', () => { 
-    alert("Sync to Google Drive initiated."); 
-});
-
-document.getElementById('btn-merge-dup')?.addEventListener('click', async () => {
-    if(!confirm("Are you sure you want to scan and merge identical items?")) return;
-    const btn = document.getElementById('btn-merge-dup'); 
-    const ogText = btn.innerHTML; 
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-2xl"></i> <span class="text-sm">Merging...</span>`; 
-    btn.disabled = true;
-    
-    try {
-        const itemsMap = {}; 
-        allInventory.forEach(item => { 
-            const key = item.name.trim().toLowerCase(); 
-            if(!itemsMap[key]) itemsMap[key] = []; 
-            itemsMap[key].push(item); 
-        });
-        
-        let mergeCount = 0;
-        for(const key in itemsMap) {
-            if(itemsMap[key].length > 1) {
-                mergeCount++; 
-                let totalQty = 0; let totalPriceObj = 0; let hasGST = false; 
-                let mainId = itemsMap[key][0].id; 
-                let finalPartNumber = itemsMap[key][0].partNumber || '';
-                let finalHsn = itemsMap[key][0].hsn || '';
+            }
+            
+            if (shouldExcludeByOutFilter === false) {
+                let isLowFilterActive = currentInventoryFilter === 'low';
+                let isItemNotLow = false;
                 
-                itemsMap[key].forEach(i => { 
-                    let iQty = Number(i.qty) || 0; 
-                    let iPrice = Number(i.price) || 0; 
-                    totalQty += iQty; totalPriceObj += (iQty * iPrice); 
-                    if (i.hasGST) hasGST = true; 
-                    if (!finalPartNumber && i.partNumber) finalPartNumber = i.partNumber; 
-                    if (!finalHsn && i.hsn) finalHsn = i.hsn;
-                });
+                if (currentItemQtyValue === 0) {
+                    isItemNotLow = true;
+                } else if (currentItemQtyValue > 3) {
+                    isItemNotLow = true;
+                }
                 
-                let avgPrice = totalQty > 0 ? (totalPriceObj / totalQty) : 0; 
-                await updateDoc(doc(db, "inventory", mainId), { qty: totalQty, price: avgPrice, hasGST: hasGST, partNumber: finalPartNumber, hsn: finalHsn });
+                let shouldExcludeByLowFilter = false;
+                if (isLowFilterActive === true) {
+                    if (isItemNotLow === true) {
+                        shouldExcludeByLowFilter = true;
+                    }
+                }
                 
-                for(let i = 1; i < itemsMap[key].length; i++) { 
-                    await deleteDoc(doc(db, "inventory", itemsMap[key][i].id)); 
+                if (shouldExcludeByLowFilter === false) {
+                    filteredInventoryArray.push(currentInventoryItem);
                 }
             }
         }
-        if(mergeCount > 0) showSuccessAnimation(`Merged ${mergeCount} Duplicate Groups!`); 
-        else alert("No duplicates found.");
-    } catch (err) { 
-        console.error(err); alert("An error occurred during merge."); 
-    } finally { 
-        btn.innerHTML = ogText; btn.disabled = false; 
     }
-});
+    
+    let filteredItemsCount = filteredInventoryArray.length;
+    
+    if (filteredItemsCount === 0) {
+        let noItemsHtmlString = `<tr><td colspan="6" class="p-4 text-center text-sm text-gray-500">No Inventory Found.</td></tr>`;
+        tbodyElement.innerHTML = noItemsHtmlString;
+        return;
+    }
+    
+    for (let j = 0; j < filteredInventoryArray.length; j++) {
+        let currentFilteredItem = filteredInventoryArray[j];
+        let currentItemQtyValue = currentFilteredItem.qty;
+        
+        let badgeHtmlString = "";
+        
+        if (currentItemQtyValue === 0) {
+            badgeHtmlString = `<span class="bg-red-50 text-danger border border-red-200 px-2 py-0.5 rounded text-xs font-bold shadow-sm">Out of Stock</span>`;
+        } else if (currentItemQtyValue <= 3) {
+            badgeHtmlString = `<span class="bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded text-xs font-bold shadow-sm">Low Stock</span>`;
+        } else {
+            badgeHtmlString = `<span class="bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded text-xs font-bold shadow-sm">In Stock</span>`;
+        }
+        
+        let gstHtmlString = "";
+        let hasGstFlag = currentFilteredItem.hasGST;
+        
+        if (hasGstFlag === true) {
+            gstHtmlString = `<span class="bg-indigo-50 border border-indigo-100 text-indigo-500 text-[9px] px-1 rounded ml-1 font-bold">GST</span>`;
+        }
+        
+        let partNumberHtmlString = "";
+        let itemPartNumberString = currentFilteredItem.partNumber;
+        
+        if (itemPartNumberString) {
+            partNumberHtmlString = `<span class="block text-[10px] text-gray-400 font-mono mt-0.5">PN: ${itemPartNumberString}</span>`;
+        }
+        
+        let currentItemNameString = currentFilteredItem.name;
+        let currentItemPriceValue = currentFilteredItem.price;
+        let parsedItemPriceValue = Number(currentItemPriceValue);
+        let fixedItemPriceString = parsedItemPriceValue.toFixed(2);
+        
+        let currentItemTotalValue = currentItemQtyValue * currentItemPriceValue;
+        let fixedItemTotalString = currentItemTotalValue.toFixed(2);
+        
+        let currentItemIdString = currentFilteredItem.id;
+        
+        let rowHtmlString = `
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition border-b dark:border-gray-700/50">
+                <td class="p-3">
+                    <div class="text-[13px] font-bold tracking-tight">${currentItemNameString} ${gstHtmlString}</div>
+                    ${partNumberHtmlString}
+                </td>
+                <td class="p-3 text-right font-mono font-bold">${currentItemQtyValue}</td>
+                <td class="p-3 text-right font-mono text-gray-500 dark:text-gray-400">₹${fixedItemPriceString}</td>
+                <td class="p-3 text-right font-mono font-bold text-success">₹${fixedItemTotalString}</td>
+                <td class="p-3 text-right">${badgeHtmlString}</td>
+                <td class="p-3 text-right">
+                    <div class="flex gap-2 justify-end">
+                        <button class="btn-edit-inv text-gray-400 hover:text-primary transition" data-id="${currentItemIdString}">
+                            <i class="fa-solid fa-pen pointer-events-none"></i>
+                        </button>
+                        <button class="btn-del-inv text-gray-400 hover:text-danger transition" data-id="${currentItemIdString}">
+                            <i class="fa-solid fa-xmark pointer-events-none"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        htmlContentString = htmlContentString + rowHtmlString;
+    }
+    
+    tbodyElement.innerHTML = htmlContentString;
+}
+
+let searchInventoryInputElement = document.getElementById('search-inventory');
+if (searchInventoryInputElement) {
+    searchInventoryInputElement.addEventListener('input', function(event) {
+        let inputValueString = event.target.value;
+        currentInventorySearch = inputValueString;
+        renderInventoryTable();
+    });
+}
+
+let allInvTabButtons = document.querySelectorAll('.inv-tab');
+for (let i = 0; i < allInvTabButtons.length; i++) {
+    let currentTabButton = allInvTabButtons[i];
+    
+    currentTabButton.addEventListener('click', function(event) {
+        let activeTabButtons = document.querySelectorAll('.inv-tab');
+        
+        for (let j = 0; j < activeTabButtons.length; j++) {
+            let iterTabButton = activeTabButtons[j];
+            iterTabButton.classList.remove('active');
+            iterTabButton.classList.remove('bg-white');
+            iterTabButton.classList.remove('text-primary');
+        }
+        
+        let targetButtonElement = event.target;
+        targetButtonElement.classList.add('active');
+        targetButtonElement.classList.add('bg-white');
+        targetButtonElement.classList.add('text-primary');
+        
+        let dataFilterValueString = targetButtonElement.getAttribute('data-filter');
+        currentInventoryFilter = dataFilterValueString;
+        
+        renderInventoryTable();
+    });
+}
+
+let formInventoryElement = document.getElementById('form-inventory');
+
+if (formInventoryElement) {
+    formInventoryElement.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        let invNameInputElement = document.getElementById('inv-name');
+        let rawInvNameString = invNameInputElement.value;
+        let finalInvNameString = rawInvNameString.trim();
+        
+        let invPartInputElement = document.getElementById('inv-part');
+        let rawInvPartString = invPartInputElement.value;
+        let finalInvPartString = rawInvPartString.trim();
+        
+        let invQtyInputElement = document.getElementById('inv-qty');
+        let rawInvQtyString = invQtyInputElement.value;
+        let parsedInvQtyFloat = parseFloat(rawInvQtyString);
+        let finalInvQtyFloat = 0;
+        if (!isNaN(parsedInvQtyFloat)) {
+            finalInvQtyFloat = parsedInvQtyFloat;
+        }
+        
+        let invPriceInputElement = document.getElementById('inv-price');
+        let rawInvPriceString = invPriceInputElement.value;
+        let parsedInvPriceFloat = parseFloat(rawInvPriceString);
+        let finalInvPriceFloat = 0;
+        if (!isNaN(parsedInvPriceFloat)) {
+            finalInvPriceFloat = parsedInvPriceFloat;
+        }
+        
+        let invGstCheckboxElement = document.getElementById('inv-gst');
+        let isInvGstChecked = invGstCheckboxElement.checked;
+        
+        let editIdValueString = formInventoryElement.getAttribute('data-edit-id');
+        
+        if (editIdValueString) {
+            let inventoryDocumentReference = doc(db, "inventory", editIdValueString);
+            
+            let updatePayloadObject = {
+                name: finalInvNameString,
+                partNumber: finalInvPartString,
+                qty: finalInvQtyFloat,
+                price: finalInvPriceFloat,
+                hasGST: isInvGstChecked
+            };
+            
+            await updateDoc(inventoryDocumentReference, updatePayloadObject);
+            
+            let successMessageString = 'Updated!';
+            showSuccessAnimation(successMessageString);
+            
+        } else {
+            let inventoryCollectionReference = collection(db, "inventory");
+            
+            let createPayloadObject = {
+                name: finalInvNameString,
+                partNumber: finalInvPartString,
+                qty: finalInvQtyFloat,
+                price: finalInvPriceFloat,
+                hasGST: isInvGstChecked,
+                hsn: ""
+            };
+            
+            await addDoc(inventoryCollectionReference, createPayloadObject);
+            
+            let successMessageString = 'Added!';
+            showSuccessAnimation(successMessageString);
+        }
+        
+        resetInventoryForm();
+    });
+}
+
+function resetInventoryForm() {
+    let formInventoryElement = document.getElementById('form-inventory');
+    if (formInventoryElement) {
+        formInventoryElement.reset();
+        formInventoryElement.removeAttribute('data-edit-id');
+    }
+    
+    let btnInvSubmitElement = document.getElementById('btn-inv-submit');
+    if (btnInvSubmitElement) {
+        btnInvSubmitElement.innerText = "Save";
+    }
+    
+    let btnInvCancelElement = document.getElementById('btn-inv-cancel');
+    if (btnInvCancelElement) {
+        btnInvCancelElement.style.display = 'none';
+    }
+    
+    let invFormTitleElement = document.getElementById('inv-form-title');
+    if (invFormTitleElement) {
+        invFormTitleElement.innerText = "Add Item";
+    }
+}
+
+let btnInvCancelElement = document.getElementById('btn-inv-cancel');
+if (btnInvCancelElement) {
+    btnInvCancelElement.addEventListener('click', function() {
+        resetInventoryForm();
+    });
+}
+
+let tableInventoryTbodyElement = document.querySelector('#table-inventory tbody');
+
+if (tableInventoryTbodyElement) {
+    tableInventoryTbodyElement.addEventListener('click', async function(event) {
+        let targetElement = event.target;
+        
+        let deleteButtonElement = targetElement.closest('.btn-del-inv');
+        if (deleteButtonElement) {
+            let confirmMessageString = 'Delete item?';
+            let isConfirmed = confirm(confirmMessageString);
+            
+            if (isConfirmed === true) {
+                let dataIdString = deleteButtonElement.getAttribute('data-id');
+                let inventoryDocumentReference = doc(db, "inventory", dataIdString);
+                await deleteDoc(inventoryDocumentReference);
+            }
+            return;
+        }
+        
+        let editButtonElement = targetElement.closest('.btn-edit-inv');
+        if (editButtonElement) {
+            let dataIdString = editButtonElement.getAttribute('data-id');
+            let targetInventoryItem = null;
+            
+            for (let i = 0; i < allInventory.length; i++) {
+                let currentInventoryItem = allInventory[i];
+                let currentInventoryId = currentInventoryItem.id;
+                
+                if (currentInventoryId === dataIdString) {
+                    targetInventoryItem = currentInventoryItem;
+                    break;
+                }
+            }
+            
+            if (targetInventoryItem !== null) {
+                let invNameInputElement = document.getElementById('inv-name');
+                if (invNameInputElement) {
+                    invNameInputElement.value = targetInventoryItem.name;
+                }
+                
+                let invPartInputElement = document.getElementById('inv-part');
+                if (invPartInputElement) {
+                    let partNumberValue = targetInventoryItem.partNumber;
+                    if (!partNumberValue) {
+                        partNumberValue = '';
+                    }
+                    invPartInputElement.value = partNumberValue;
+                }
+                
+                let invQtyInputElement = document.getElementById('inv-qty');
+                if (invQtyInputElement) {
+                    invQtyInputElement.value = targetInventoryItem.qty;
+                }
+                
+                let invPriceInputElement = document.getElementById('inv-price');
+                if (invPriceInputElement) {
+                    invPriceInputElement.value = targetInventoryItem.price;
+                }
+                
+                let invGstCheckboxElement = document.getElementById('inv-gst');
+                if (invGstCheckboxElement) {
+                    invGstCheckboxElement.checked = targetInventoryItem.hasGST;
+                }
+                
+                let formInventoryElement = document.getElementById('form-inventory');
+                if (formInventoryElement) {
+                    formInventoryElement.setAttribute('data-edit-id', targetInventoryItem.id);
+                }
+                
+                let btnInvSubmitElement = document.getElementById('btn-inv-submit');
+                if (btnInvSubmitElement) {
+                    btnInvSubmitElement.innerText = "Update";
+                }
+                
+                let btnInvCancelElement = document.getElementById('btn-inv-cancel');
+                if (btnInvCancelElement) {
+                    btnInvCancelElement.style.display = 'block';
+                }
+                
+                let invFormTitleElement = document.getElementById('inv-form-title');
+                if (invFormTitleElement) {
+                    invFormTitleElement.innerText = "Edit Item";
+                }
+                
+                let scrollOptionsObject = {
+                    top: 0,
+                    behavior: 'smooth'
+                };
+                window.scrollTo(scrollOptionsObject);
+            }
+        }
+    });
+}
+
+let btnExportGstElement = document.getElementById('btn-export-gst');
+
+if (btnExportGstElement) {
+    btnExportGstElement.addEventListener('click', function() {
+        let gstExportStartElement = document.getElementById('gst-export-start');
+        let startValueString = "";
+        if (gstExportStartElement) {
+            startValueString = gstExportStartElement.value;
+        }
+        
+        let gstExportEndElement = document.getElementById('gst-export-end');
+        let endValueString = "";
+        if (gstExportEndElement) {
+            endValueString = gstExportEndElement.value;
+        }
+        
+        let isStartEmpty = startValueString === "";
+        let isEndEmpty = endValueString === "";
+        
+        let isMissingDates = false;
+        if (isStartEmpty === true) {
+            isMissingDates = true;
+        } else if (isEndEmpty === true) {
+            isMissingDates = true;
+        }
+        
+        if (isMissingDates === true) {
+            alert('Select dates');
+            return;
+        }
+        
+        let formattedStartString = startValueString + 'T00:00:00';
+        let startDateObject = new Date(formattedStartString);
+        
+        let formattedEndString = endValueString + 'T23:59:59';
+        let endDateObject = new Date(formattedEndString);
+        
+        let salesExportArray = [];
+        let purchasesExportArray = [];
+        
+        for (let i = 0; i < allTransactions.length; i++) {
+            let currentTransactionObject = allTransactions[i];
+            let hasGstFlag = currentTransactionObject.hasGST;
+            
+            if (hasGstFlag === false) {
+                continue;
+            }
+            
+            let transactionDateString = currentTransactionObject.date;
+            let transactionDateObject = new Date(transactionDateString);
+            
+            let isBeforeStart = transactionDateObject < startDateObject;
+            let isAfterEnd = transactionDateObject > endDateObject;
+            
+            let isOutOfRange = false;
+            if (isBeforeStart === true) {
+                isOutOfRange = true;
+            } else if (isAfterEnd === true) {
+                isOutOfRange = true;
+            }
+            
+            if (isOutOfRange === true) {
+                continue;
+            }
+            
+            let formattedLocaleDateString = transactionDateObject.toLocaleDateString('en-GB');
+            
+            let invoiceValueString = currentTransactionObject.invoice;
+            if (!invoiceValueString) {
+                invoiceValueString = currentTransactionObject.invoiceNo;
+            }
+            if (!invoiceValueString) {
+                invoiceValueString = "N/A";
+            }
+            
+            let partyValueString = currentTransactionObject.supplier;
+            if (!partyValueString) {
+                partyValueString = currentTransactionObject.customerName;
+            }
+            if (!partyValueString) {
+                partyValueString = "Cash";
+            }
+            
+            let gstinValueString = currentTransactionObject.supplierGstin;
+            if (!gstinValueString) {
+                gstinValueString = currentTransactionObject.customerGstin;
+            }
+            if (!gstinValueString) {
+                gstinValueString = "";
+            }
+            
+            let itemValueString = currentTransactionObject.item;
+            
+            let hsnValueString = currentTransactionObject.hsn;
+            if (!hsnValueString) {
+                hsnValueString = "";
+            }
+            
+            let qtyValueFloat = currentTransactionObject.qty;
+            let taxableValueFloat = currentTransactionObject.taxable;
+            
+            let cgstValueFloat = currentTransactionObject.cgst;
+            if (!cgstValueFloat) {
+                cgstValueFloat = 0;
+            }
+            
+            let sgstValueFloat = currentTransactionObject.sgst;
+            if (!sgstValueFloat) {
+                sgstValueFloat = 0;
+            }
+            
+            let igstValueFloat = currentTransactionObject.igst;
+            if (!igstValueFloat) {
+                igstValueFloat = 0;
+            }
+            
+            let totalAmountValueFloat = currentTransactionObject.amount;
+            
+            let exportRowObject = {
+                "Date": formattedLocaleDateString,
+                "Invoice": invoiceValueString,
+                "Party": partyValueString,
+                "GSTIN": gstinValueString,
+                "Item": itemValueString,
+                "HSN": hsnValueString,
+                "Qty": qtyValueFloat,
+                "Taxable Value": taxableValueFloat,
+                "CGST": cgstValueFloat,
+                "SGST": sgstValueFloat,
+                "IGST": igstValueFloat,
+                "Total": totalAmountValueFloat
+            };
+            
+            let transactionTypeString = currentTransactionObject.type;
+            
+            if (transactionTypeString === 'Sale') {
+                salesExportArray.push(exportRowObject);
+            } else if (transactionTypeString === 'Purchase') {
+                purchasesExportArray.push(exportRowObject);
+            }
+        }
+        
+        let salesCountValue = salesExportArray.length;
+        let purchasesCountValue = purchasesExportArray.length;
+        
+        let isSalesEmpty = salesCountValue === 0;
+        let isPurchasesEmpty = purchasesCountValue === 0;
+        
+        let isBothEmpty = false;
+        if (isSalesEmpty === true) {
+            if (isPurchasesEmpty === true) {
+                isBothEmpty = true;
+            }
+        }
+        
+        if (isBothEmpty === true) {
+            alert('No GST transactions found.');
+            return;
+        }
+        
+        let excelWorkbookObject = XLSX.utils.book_new();
+        
+        if (isSalesEmpty === false) {
+            let salesWorksheetObject = XLSX.utils.json_to_sheet(salesExportArray);
+            XLSX.utils.book_append_sheet(excelWorkbookObject, salesWorksheetObject, "Sales_GST");
+        }
+        
+        if (isPurchasesEmpty === false) {
+            let purchasesWorksheetObject = XLSX.utils.json_to_sheet(purchasesExportArray);
+            XLSX.utils.book_append_sheet(excelWorkbookObject, purchasesWorksheetObject, "Purchases_GST");
+        }
+        
+        let exportFileNameString = `GST_Report_${startValueString}.xlsx`;
+        XLSX.writeFile(excelWorkbookObject, exportFileNameString);
+    });
+}
+
+let btnTriggerExcelElement = document.getElementById('btn-trigger-excel');
+
+if (btnTriggerExcelElement) {
+    btnTriggerExcelElement.addEventListener('click', function() {
+        let excelFileElement = document.getElementById('excel-file');
+        if (excelFileElement) {
+            excelFileElement.click();
+        }
+    });
+}
+
+let excelFileElement = document.getElementById('excel-file');
+
+if (excelFileElement) {
+    excelFileElement.addEventListener('change', async function(event) {
+        let targetFilesArray = event.target.files;
+        let uploadedFileObject = targetFilesArray[0];
+        
+        if (!uploadedFileObject) {
+            return;
+        }
+        
+        let confirmMessageString = "WARNING: This replaces entire inventory. Proceed?";
+        let isConfirmed = confirm(confirmMessageString);
+        
+        if (isConfirmed === false) {
+            event.target.value = '';
+            return;
+        }
+        
+        let btnTriggerExcelElement = document.getElementById('btn-trigger-excel');
+        let originalButtonHtmlString = btnTriggerExcelElement.innerHTML;
+        
+        let processingHtmlString = '<i class="fa-solid fa-spin fa-spinner"></i> Importing';
+        btnTriggerExcelElement.innerHTML = processingHtmlString;
+        btnTriggerExcelElement.disabled = true;
+        
+        let fileReaderObject = new FileReader();
+        
+        fileReaderObject.onload = async function(loadEvent) {
+            try {
+                let loadEventResultArrayBuffer = loadEvent.target.result;
+                let uint8ArrayObject = new Uint8Array(loadEventResultArrayBuffer);
+                
+                let readOptionsObject = {
+                    type: 'array'
+                };
+                
+                let excelWorkbookObject = XLSX.read(uint8ArrayObject, readOptionsObject);
+                let firstSheetNameString = excelWorkbookObject.SheetNames[0];
+                let firstWorksheetObject = excelWorkbookObject.Sheets[firstSheetNameString];
+                
+                let parsedJsonArray = XLSX.utils.sheet_to_json(firstWorksheetObject);
+                
+                for (let i = 0; i < allInventory.length; i++) {
+                    let currentInventoryItem = allInventory[i];
+                    let inventoryDocumentReference = doc(db, "inventory", currentInventoryItem.id);
+                    await deleteDoc(inventoryDocumentReference);
+                }
+                
+                for (let j = 0; j < parsedJsonArray.length; j++) {
+                    let currentRowObject = parsedJsonArray[j];
+                    
+                    let itemNameString = currentRowObject['Name'];
+                    if (!itemNameString) {
+                        itemNameString = currentRowObject['name'];
+                    }
+                    if (!itemNameString) {
+                        itemNameString = currentRowObject['Particulars'];
+                    }
+                    
+                    if (!itemNameString) {
+                        continue;
+                    }
+                    
+                    let trimmedItemNameString = String(itemNameString).trim();
+                    
+                    let rawQtyValue = currentRowObject['Qty'];
+                    if (!rawQtyValue) {
+                        rawQtyValue = currentRowObject['qty'];
+                    }
+                    let parsedQtyFloat = Number(rawQtyValue);
+                    let finalQtyFloat = 0;
+                    if (!isNaN(parsedQtyFloat)) {
+                        finalQtyFloat = parsedQtyFloat;
+                    }
+                    
+                    let rawPriceValue = currentRowObject['Price'];
+                    if (!rawPriceValue) {
+                        rawPriceValue = currentRowObject['price'];
+                    }
+                    let parsedPriceFloat = Number(rawPriceValue);
+                    let finalPriceFloat = 0;
+                    if (!isNaN(parsedPriceFloat)) {
+                        finalPriceFloat = parsedPriceFloat;
+                    }
+                    
+                    let rawGstFlag = currentRowObject['GST'];
+                    let finalGstFlag = false;
+                    if (rawGstFlag) {
+                        finalGstFlag = true;
+                    }
+                    
+                    let rawPartNumberString = currentRowObject['PN'];
+                    let finalPartNumberString = "";
+                    if (rawPartNumberString) {
+                        finalPartNumberString = rawPartNumberString;
+                    }
+                    
+                    let rawHsnString = currentRowObject['HSN'];
+                    let finalHsnString = "";
+                    if (rawHsnString) {
+                        finalHsnString = rawHsnString;
+                    }
+                    
+                    let inventoryCollectionReference = collection(db, "inventory");
+                    let createPayloadObject = {
+                        name: trimmedItemNameString,
+                        qty: finalQtyFloat,
+                        price: finalPriceFloat,
+                        hasGST: finalGstFlag,
+                        partNumber: finalPartNumberString,
+                        hsn: finalHsnString
+                    };
+                    
+                    await addDoc(inventoryCollectionReference, createPayloadObject);
+                }
+                
+                let successMessageString = 'Import Complete!';
+                showSuccessAnimation(successMessageString);
+                
+            } catch (error) {
+                let errorMessageString = error.message;
+                let alertMessageString = 'Import Error: ' + errorMessageString;
+                alert(alertMessageString);
+                
+            } finally {
+                btnTriggerExcelElement.innerHTML = originalButtonHtmlString;
+                btnTriggerExcelElement.disabled = false;
+                event.target.value = '';
+            }
+        };
+        
+        fileReaderObject.readAsArrayBuffer(uploadedFileObject);
+    });
+}
+
+let btnMergeDupElement = document.getElementById('btn-merge-dup');
+
+if (btnMergeDupElement) {
+    btnMergeDupElement.addEventListener('click', async function() {
+        let confirmMessageString = "Scan & Merge identical items?";
+        let isConfirmed = confirm(confirmMessageString);
+        
+        if (isConfirmed === false) {
+            return;
+        }
+        
+        let originalButtonHtmlString = btnMergeDupElement.innerHTML;
+        
+        let processingHtmlString = '<i class="fa-solid fa-spin fa-spinner"></i> Merging';
+        btnMergeDupElement.innerHTML = processingHtmlString;
+        btnMergeDupElement.disabled = true;
+        
+        try {
+            let itemMapObject = {};
+            
+            for (let i = 0; i < allInventory.length; i++) {
+                let currentInventoryItem = allInventory[i];
+                let currentItemNameString = currentInventoryItem.name;
+                let trimmedItemNameString = currentItemNameString.trim();
+                let lowerItemNameString = trimmedItemNameString.toLowerCase();
+                
+                let mappedArray = itemMapObject[lowerItemNameString];
+                if (!mappedArray) {
+                    itemMapObject[lowerItemNameString] = [];
+                }
+                
+                itemMapObject[lowerItemNameString].push(currentInventoryItem);
+            }
+            
+            let mergedDuplicatesCount = 0;
+            let itemKeysArray = Object.keys(itemMapObject);
+            
+            for (let j = 0; j < itemKeysArray.length; j++) {
+                let currentKeyString = itemKeysArray[j];
+                let mappedItemsArray = itemMapObject[currentKeyString];
+                let arrayLengthValue = mappedItemsArray.length;
+                
+                if (arrayLengthValue > 1) {
+                    mergedDuplicatesCount++;
+                    
+                    let totalQtyAccumulator = 0;
+                    let totalPriceAccumulator = 0;
+                    
+                    let masterInventoryItem = mappedItemsArray[0];
+                    let masterInventoryId = masterInventoryItem.id;
+                    
+                    for (let k = 0; k < mappedItemsArray.length; k++) {
+                        let innerMappedItem = mappedItemsArray[k];
+                        let itemQtyValue = innerMappedItem.qty;
+                        let itemPriceValue = innerMappedItem.price;
+                        
+                        let itemTotalValue = itemQtyValue * itemPriceValue;
+                        
+                        totalQtyAccumulator = totalQtyAccumulator + itemQtyValue;
+                        totalPriceAccumulator = totalPriceAccumulator + itemTotalValue;
+                    }
+                    
+                    let newAveragePriceValue = 0;
+                    if (totalQtyAccumulator > 0) {
+                        newAveragePriceValue = totalPriceAccumulator / totalQtyAccumulator;
+                    }
+                    
+                    let inventoryDocumentReference = doc(db, "inventory", masterInventoryId);
+                    let updatePayloadObject = {
+                        qty: totalQtyAccumulator,
+                        price: newAveragePriceValue
+                    };
+                    
+                    await updateDoc(inventoryDocumentReference, updatePayloadObject);
+                    
+                    for (let m = 1; m < mappedItemsArray.length; m++) {
+                        let itemToDelete = mappedItemsArray[m];
+                        let deleteDocumentReference = doc(db, "inventory", itemToDelete.id);
+                        
+                        await deleteDoc(deleteDocumentReference);
+                    }
+                }
+            }
+            
+            if (mergedDuplicatesCount > 0) {
+                let successMessageString = `Merged ${mergedDuplicatesCount} duplicates!`;
+                showSuccessAnimation(successMessageString);
+            } else {
+                alert('No duplicates.');
+            }
+            
+        } catch (error) {
+            let errorMessageString = error.message;
+            let alertMessageString = 'Error: ' + errorMessageString;
+            alert(alertMessageString);
+            
+        } finally {
+            btnMergeDupElement.innerHTML = originalButtonHtmlString;
+            btnMergeDupElement.disabled = false;
+        }
+    });
+}
