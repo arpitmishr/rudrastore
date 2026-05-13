@@ -31,7 +31,16 @@
         .dark-mode { color-scheme: dark; }
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
         .tab { display: none; }
-        .tab.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        .tab.active { display: flex; flex-direction: column; animation: fadeIn 0.3s ease-in-out; }
+        
+        /* Ensures tabs that aren't using display flex behave correctly but defaults for block otherwise */
+        #tab-dashboard, #tab-transactions, #tab-analytics, #tab-sales, #tab-inventory, #tab-settings {
+             display: none; 
+        }
+        #tab-dashboard.active, #tab-transactions.active, #tab-analytics.active, #tab-sales.active, #tab-inventory.active, #tab-settings.active {
+            display: block;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -60,6 +69,38 @@
             -webkit-text-fill-color: #f3f4f6 !important;
             transition: background-color 5000s ease-in-out 0s;
         }
+
+        /* NEW ERP STYLES */
+        .erp-table td { 
+            padding: 2px 4px; 
+            border: 1px solid #e5e7eb; 
+            vertical-align: top;
+            position: relative;
+        }
+        .dark-mode .erp-table td { border-color: #374151; }
+        .erp-input { 
+            width: 100%; height: 32px; 
+            background-color: transparent; border: 1px solid transparent; 
+            outline: none; font-size: 0.875rem; font-weight: 500; 
+            transition: all 0.2s; padding: 0 0.5rem; border-radius: 4px; 
+            color: inherit;
+        }
+        .erp-input:focus { 
+            background-color: #fef2f2; border-color: #ef4444; 
+            box-shadow: 0px 4px 6px rgba(0,0,0,0.1); 
+            z-index: 20; position: relative; color: #111827; 
+        }
+        .dark-mode .erp-input:focus { 
+            background-color: #450a0a; outline-color: #ef4444; color: #fff; 
+        }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        input[type="number"] { -moz-appearance: textfield; }
+        
+        /* Auto complete highlighting */
+        .dropdown-item-hover { background-color: #f3f4f6; }
+        .dark-mode .dropdown-item-hover { background-color: #4b5563; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen selection:bg-primary selection:text-white relative">
@@ -96,7 +137,7 @@
     </div>
 
     <div id="app-container" style="display: none;" class="h-screen w-full flex overflow-hidden">
-        <aside class="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full z-10">
+        <aside class="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full z-10 shrink-0">
             <div class="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700">
                 <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white"><i class="fa-solid fa-bolt"></i></div>
                 <h2 class="text-lg font-bold tracking-tight">ShopManager</h2>
@@ -131,9 +172,9 @@
             </div>
         </aside>
 
-        <main class="flex-1 h-full overflow-y-auto bg-gray-50/50 dark:bg-gray-900 p-4 md:p-8 pb-24 md:pb-8 relative">
+        <main class="flex-1 h-full overflow-y-auto bg-gray-50/50 dark:bg-gray-900 p-4 md:p-6 pb-24 md:pb-6 relative w-full flex flex-col">
             
-            <div id="tab-dashboard" class="tab active max-w-7xl mx-auto">
+            <div id="tab-dashboard" class="tab active max-w-7xl mx-auto w-full">
                 <div class="flex items-center justify-between mb-6">
                     <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Dashboard Overview</h1>
                     <div class="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-semibold border border-primary/20 shadow-sm"><i class="fa-regular fa-calendar mr-1"></i> Today</div>
@@ -187,7 +228,7 @@
                 </div>
             </div>
 
-            <div id="tab-transactions" class="tab max-w-7xl mx-auto">
+            <div id="tab-transactions" class="tab max-w-7xl mx-auto w-full">
                 <h1 class="text-2xl font-bold mb-1">Transactions Ledger</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Track all sales, purchases, and returns in one place.</p>
                 
@@ -223,9 +264,9 @@
                 </div>
             </div>
 
-            <div id="tab-analytics" class="tab max-w-7xl mx-auto">
+            <div id="tab-analytics" class="tab max-w-7xl mx-auto w-full">
                 <h1 class="text-2xl font-bold mb-6">Business Insights <i class="fa-solid fa-chart-pie text-purple-500 ml-2"></i></h1>
-                <!-- NEW GST REPORT EXPORT SECTION -->
+                
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 border-l-4 border-l-success">
                     <h3 class="text-lg font-bold mb-1"><i class="fa-solid fa-file-excel text-success mr-2"></i> Export GST Report (B2B & B2C)</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Download an Excel report containing Taxable Values, HSN, CGST, SGST, and IGST separated by Sales and Purchases.</p>
@@ -283,7 +324,7 @@
                 </div>
             </div>
 
-            <div id="tab-sales" class="tab max-w-7xl mx-auto">
+            <div id="tab-sales" class="tab max-w-7xl mx-auto w-full">
                 <h1 class="text-2xl font-bold mb-6">Record New Sales</h1>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -326,7 +367,7 @@
                                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Calculate GST for this Item</span>
                             </label>
 
-                            <!-- NEW GST CALCULATION SECTION -->
+                            <!-- OLD GST CALCULATION SECTION RETAINED -->
                             <div id="sale-tax-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <div><label class="block text-xs font-semibold mb-1">HSN Code</label><input type="text" id="sale-hsn" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
                                 <div><label class="block text-xs font-semibold mb-1">GST % Rate</label><select id="sale-gst-rate" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option selected value="18">18%</option><option value="28">28%</option></select></div>
@@ -351,8 +392,6 @@
                             
                             <button type="submit" id="btn-save-sale" class="w-full bg-success hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-md transition-all text-lg flex items-center justify-center gap-2 active:scale-95 mt-4"><i class="fa-solid fa-check-double"></i> Generate Invoice & Save</button>
                         </form>
-
-                        
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border-t-4 border-t-cosmetic border border-gray-100 dark:border-gray-700 relative overflow-hidden h-fit">
@@ -377,87 +416,165 @@
                 </div>
             </div>
 
-            <div id="tab-purchases" class="tab max-w-4xl mx-auto">
-                <h1 class="text-2xl font-bold mb-6">Record Purchases</h1>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger"><i class="fa-solid fa-truck-ramp-box"></i></div>
-                        <div><h3 class="text-lg font-bold">New Inventory Arrival</h3><p class="text-xs text-gray-500 dark:text-gray-400">Log all necessary details for complete tracking.</p></div>
-                    </div>
-                   <form id="form-purchase" class="space-y-4 relative">
-                        <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl mb-4 space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Purchase Date</label><input type="date" id="purchase-date" required class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none"></div>
-                                <div><label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Invoice / Bill No.</label><input type="text" id="purchase-invoice" required placeholder="INV-12345" class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none uppercase"></div>
-                            </div>
-
-                            <div class="relative">
-                                <label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Supplier Name (Type 'Cash' for local)</label>
-                                <input type="text" id="purchase-supplier" autocomplete="off" required placeholder="Search supplier..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none transition-all">
-                                <div id="purchase-supplier-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100"></div>
-                            </div>
-
-                            <div class="flex gap-4 items-end">
-                                <div class="flex-1">
-                                    <label class="block text-sm font-semibold mb-1 text-red-900 dark:text-red-300">Supplier GSTIN</label>
-                                    <input type="text" id="purchase-gstin" placeholder="Optional" class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg outline-none uppercase">
-                                </div>
-                                <div id="purchase-gst-indicator" class="hidden px-4 py-2 bg-danger text-white rounded-lg font-bold text-sm shadow-md flex items-center gap-2">
-                                    <i class="fa-solid fa-file-invoice-dollar"></i> GST Party
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="relative">
-                                <label class="block text-sm font-semibold mb-1">Item Name</label>
-                                <input type="text" id="purchase-item" autocomplete="off" placeholder="Search or create new..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none transition-all">
-                                <div id="purchase-item-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100"></div>
-                            </div>
-                            <div><label class="block text-sm font-semibold mb-1">Part Number</label><input type="text" id="purchase-part" placeholder="E.g., PN-001" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-sm font-semibold mb-1">Qty</label><input type="number" id="purchase-qty" placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none"></div>
-                            <div><label class="block text-sm font-semibold mb-1">Rate (₹)</label><input type="number" step="0.01" id="purchase-rate" placeholder="0.00" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg outline-none text-xl font-bold"></div>
-                        </div>
-
-                        <label class="flex items-center gap-2 mt-2">
-                            <input type="checkbox" id="purchase-gst" class="w-4 h-4 text-danger bg-gray-100 border-gray-300 rounded focus:ring-danger">
-                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Calculate GST for this Item</span>
+            <!-- ========================================== -->
+            <!-- ✨ NEW FULLY REWRITTEN PURCHASE TAB START  -->
+            <!-- ========================================== -->
+            <div id="tab-purchases" class="tab w-full max-w-7xl mx-auto flex flex-col h-full overflow-hidden">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center"><div class="w-8 h-8 rounded-full bg-danger/10 flex items-center justify-center text-danger text-sm mr-2 shadow-sm"><i class="fa-solid fa-truck-ramp-box"></i></div> Purchase Entry</h1>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <label class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded cursor-pointer shadow-sm hover:bg-gray-50 transition-colors w-full sm:w-auto justify-center">
+                            <input type="checkbox" id="pur-manual-override" class="w-4 h-4 text-warning focus:ring-warning rounded border-gray-300">
+                            Override Math
                         </label>
+                        <button id="btn-pur-history" class="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-bold px-3 py-1.5 border border-indigo-200 dark:border-indigo-800 rounded shadow-sm text-sm whitespace-nowrap hover:bg-indigo-100 w-full sm:w-auto justify-center transition-colors">
+                            <i class="fa-solid fa-clock-rotate-left mr-1"></i> Logs
+                        </button>
+                    </div>
+                </div>
 
-                        <!-- NEW GST CALCULATION SECTION -->
-                        <div id="purchase-tax-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-                            <div><label class="block text-xs font-semibold mb-1">HSN Code</label><input type="text" id="purchase-hsn" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
-                            <div><label class="block text-xs font-semibold mb-1">GST % Rate</label><select id="purchase-gst-rate" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option selected value="18">18%</option><option value="28">28%</option></select></div>
-                            <div><label class="block text-xs font-semibold mb-1 text-danger">CGST (₹)</label><input type="number" step="0.01" id="purchase-cgst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
-                            <div><label class="block text-xs font-semibold mb-1 text-danger">SGST (₹)</label><input type="number" step="0.01" id="purchase-sgst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
-                            <div><label class="block text-xs font-semibold mb-1 text-danger">IGST (₹)</label><input type="number" step="0.01" id="purchase-igst" value="0.00" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
-                            <div><label class="block text-xs font-semibold mb-1 text-gray-500">Taxable Value (₹)</label><input type="number" step="0.01" id="purchase-taxable" readonly class="w-full px-3 py-1.5 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded outline-none cursor-not-allowed"></div>
+                <div class="bg-white dark:bg-gray-800 flex flex-col flex-1 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden relative">
+                    
+                    <!-- Top Master Bar -->
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800 shrink-0">
+                        <!-- Invoice level controls -->
+                        <div class="flex items-center gap-6 mb-4">
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input type="checkbox" id="pur-gst-master" class="sr-only peer" checked>
+                                <div class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-danger shadow-inner"></div>
+                                <span class="ml-3 text-sm font-black tracking-tight text-gray-700 dark:text-gray-200 uppercase">GST Registration</span>
+                            </label>
+                            <div id="pur-supply-badge" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded border">Auto Assessed</div>
                         </div>
 
-                        <div><label class="block text-sm font-semibold mb-1">Final Amount (Incl. Taxes)</label><input type="number" id="purchase-amount" readonly class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-danger border border-gray-200 dark:border-gray-600 rounded-lg font-bold outline-none cursor-not-allowed"></div>
+                        <!-- Data Fields Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            <div class="lg:col-span-1">
+                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Invoice Date <span class="text-danger">*</span></label>
+                                <input type="date" id="pur-date" class="w-full text-sm font-semibold px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-danger outline-none erp-nav transition-shadow">
+                            </div>
+                            
+                            <div class="lg:col-span-1 relative group">
+                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Bill / Ref No <span class="text-danger">*</span></label>
+                                <input type="text" id="pur-inv" class="w-full text-sm font-semibold uppercase px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-danger outline-none erp-nav transition-shadow" placeholder="INV-2024" autocomplete="off">
+                                <div id="pur-inv-warning" class="hidden absolute top-0 right-0 -mt-2 -mr-2 w-5 h-5 bg-warning text-white rounded-full flex items-center justify-center text-xs animate-bounce shadow" title="Duplicate warning"><i class="fa-solid fa-exclamation"></i></div>
+                            </div>
+                            
+                            <div class="lg:col-span-2 relative">
+                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Party / Supplier <span class="text-danger">*</span></label>
+                                <input type="text" id="pur-supplier" class="w-full text-sm font-semibold px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-danger outline-none erp-nav transition-shadow" placeholder="Search or Create Party..." autocomplete="off">
+                                <div id="pur-supplier-dropdown" class="hidden absolute z-[60] w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-xl max-h-48 overflow-y-auto overflow-x-hidden text-sm divide-y divide-gray-100 dark:divide-gray-700"></div>
+                            </div>
 
-                        <button type="button" id="btn-add-purchase-cart" class="w-full bg-gray-800 dark:bg-gray-600 hover:bg-black text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"><i class="fa-solid fa-arrow-down"></i> Add Item to Bill</button>
+                            <div class="lg:col-span-2 gst-group transition-all opacity-100">
+                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">GSTIN</label>
+                                <div class="relative">
+                                    <input type="text" id="pur-gstin" class="w-full text-sm font-semibold uppercase px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-danger outline-none erp-nav transition-shadow" placeholder="E.g., 22AAAAA0000A1Z5">
+                                    <div class="absolute right-3 top-1.5 pointer-events-none text-gray-400" id="pur-gstin-status"><i class="fa-solid fa-id-card"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div id="purchase-cart-container" class="hidden mt-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-inner">
-                            <h4 class="text-sm font-bold border-b border-gray-200 dark:border-gray-700 pb-2 mb-3">Items in this Bill</h4>
-                            <ul id="purchase-cart-list" class="space-y-2 text-sm max-h-48 overflow-y-auto pr-2"></ul>
-                            <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-end">
-                                <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Bill Amount</span>
-                                <span class="text-2xl font-bold text-gray-800 dark:text-white">₹<span id="purchase-cart-total">0.00</span></span>
+                    <!-- Items Detail Table Section -->
+                    <div class="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-800 min-h-[250px] erp-table-container custom-scrollbar">
+                        <table id="pur-table" class="erp-table min-w-[1000px] w-full text-left whitespace-nowrap table-fixed">
+                            <thead class="bg-gray-100 dark:bg-gray-900 sticky top-0 z-40 border-b border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400">
+                                <tr>
+                                    <th class="py-1.5 px-2 w-8 text-center text-[10px] uppercase font-bold tracking-widest border-r dark:border-gray-700">#</th>
+                                    <th class="py-1.5 px-2 text-[10px] uppercase font-bold tracking-widest border-r dark:border-gray-700">Particulars (Item)</th>
+                                    <th class="py-1.5 px-2 w-28 text-[10px] uppercase font-bold tracking-widest border-r dark:border-gray-700">HSN/SAC</th>
+                                    <th class="py-1.5 px-2 w-24 text-[10px] uppercase font-bold tracking-widest text-right border-r dark:border-gray-700">Qty</th>
+                                    <th class="py-1.5 px-2 w-20 text-[10px] uppercase font-bold tracking-widest text-center border-r dark:border-gray-700">Unit</th>
+                                    <th class="py-1.5 px-2 w-28 text-[10px] uppercase font-bold tracking-widest text-right border-r dark:border-gray-700">Rate (₹)</th>
+                                    <th class="py-1.5 px-2 w-20 text-[10px] uppercase font-bold tracking-widest text-center border-r dark:border-gray-700 pur-gst-col">GST%</th>
+                                    <th class="py-1.5 px-2 w-32 text-[10px] uppercase font-bold tracking-widest text-right border-r dark:border-gray-700">Taxable Val</th>
+                                    <th class="py-1.5 px-2 w-28 text-[10px] uppercase font-bold tracking-widest text-right border-r dark:border-gray-700 pur-gst-col">Tax (₹)</th>
+                                    <th class="py-1.5 px-2 w-36 text-[10px] uppercase font-bold tracking-widest text-right border-r dark:border-gray-700 text-danger">Total (₹)</th>
+                                    <th class="py-1.5 px-2 w-10 text-center"><i class="fa-solid fa-trash text-gray-400 text-xs"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="pur-tbody" class="text-sm bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700/60">
+                                <!-- App JS injects row exactly as styled below via template -->
+                                <!-- 
+                                    (Sample visual only before JS loads to stop content flash jump)
+                                -->
+                                <tr class="opacity-50 pointer-events-none" id="dummy-loader">
+                                    <td class="text-center text-xs text-gray-400">1</td>
+                                    <td><input disabled placeholder="Loading System..." class="erp-input w-full"></td>
+                                    <td><input disabled class="erp-input w-full text-center"></td>
+                                    <td><input disabled class="erp-input w-full text-right"></td>
+                                    <td><input disabled class="erp-input w-full text-center"></td>
+                                    <td><input disabled class="erp-input w-full text-right"></td>
+                                    <td class="pur-gst-col"><input disabled class="erp-input w-full text-center"></td>
+                                    <td><input disabled class="erp-input w-full text-right font-bold text-gray-400 bg-gray-50"></td>
+                                    <td class="pur-gst-col"><input disabled class="erp-input w-full text-right font-bold text-gray-400 bg-gray-50"></td>
+                                    <td><input disabled class="erp-input w-full text-right font-bold text-gray-400 bg-gray-50"></td>
+                                    <td class="text-center text-gray-300">...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Keyboard help bar fixed over the scroll table footer area -->
+                    <div class="bg-gray-50/90 dark:bg-gray-900/90 py-1.5 border-t border-b border-gray-200 dark:border-gray-700 px-4 shrink-0 flex flex-col sm:flex-row justify-between items-center text-[11px] font-medium text-gray-500">
+                        <div>
+                            <kbd class="border dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1.5 py-0.5 shadow-sm text-gray-800 dark:text-gray-200"><i class="fa-solid fa-turn-down fa-rotate-90 text-[10px]"></i> Enter</kbd> Advance |
+                            <kbd class="border dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1.5 py-0.5 shadow-sm ml-1 text-gray-800 dark:text-gray-200">Shift</kbd> + <kbd class="border dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1.5 py-0.5 shadow-sm text-gray-800 dark:text-gray-200"><i class="fa-solid fa-turn-down fa-rotate-90 text-[10px]"></i> Enter</kbd> Back | 
+                            <kbd class="border dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1.5 py-0.5 shadow-sm ml-1 text-gray-800 dark:text-gray-200 text-danger font-bold">Ctrl</kbd> + <kbd class="border dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1.5 py-0.5 shadow-sm text-gray-800 dark:text-gray-200"><i class="fa-solid fa-turn-down fa-rotate-90 text-[10px]"></i> Enter</kbd> Add Row
+                        </div>
+                        <div class="text-right mt-1 sm:mt-0 text-gray-400" id="pur-validation-toast">Auto-saving calculations...</div>
+                    </div>
+
+                    <!-- Bottom Calculator & Submit Box -->
+                    <div class="flex flex-col md:flex-row items-stretch shrink-0 bg-white dark:bg-gray-800">
+                        
+                        <!-- Memory Module -->
+                        <div class="md:w-5/12 xl:w-1/2 p-4 hidden md:flex flex-col justify-end border-r border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/50">
+                           <div id="pur-smart-assistant" class="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-lg p-3 h-28 flex flex-col justify-center text-sm relative">
+                                <h4 class="text-[10px] font-bold uppercase text-indigo-400 dark:text-indigo-600 absolute top-2 left-3 tracking-widest"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Line Assistant</h4>
+                                <div class="mt-4 text-center text-indigo-400/80 font-medium italic animate-pulse">Waiting for item selection...</div>
+                                <!-- This div receives inner HTML in JS based on focused item showing Memory Pricing -->
+                           </div>
+                        </div>
+
+                        <!-- Sticky Totals Column -->
+                        <div class="w-full md:w-7/12 xl:w-1/2 p-5 bg-yellow-50/30 dark:bg-yellow-900/5">
+                            <div class="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-sm font-semibold max-w-sm ml-auto mr-0">
+                                <div class="text-gray-500">Taxable Amt:</div><div id="pur-t-taxable" class="text-right text-gray-800 dark:text-white font-mono font-medium tracking-tight">₹0.00</div>
+                                
+                                <div class="text-gray-500 pur-gst-col group-local"><span class="float-right text-[10px] text-gray-400 ml-2 mt-1">(<span id="p-cgst-p">0</span>%)</span> CGST Amt:</div><div id="pur-t-cgst" class="text-right text-gray-800 dark:text-white font-mono font-medium tracking-tight pur-gst-col group-local">₹0.00</div>
+                                
+                                <div class="text-gray-500 pur-gst-col group-local"><span class="float-right text-[10px] text-gray-400 ml-2 mt-1">(<span id="p-sgst-p">0</span>%)</span> SGST Amt:</div><div id="pur-t-sgst" class="text-right text-gray-800 dark:text-white font-mono font-medium tracking-tight pur-gst-col group-local">₹0.00</div>
+                                
+                                <div class="text-gray-500 pur-gst-col group-inter hidden"><span class="float-right text-[10px] text-gray-400 ml-2 mt-1">(<span id="p-igst-p">0</span>%)</span> IGST Amt:</div><div id="pur-t-igst" class="text-right text-purple-700 dark:text-purple-400 font-mono font-medium tracking-tight pur-gst-col group-inter hidden">₹0.00</div>
+                                
+                                <div class="col-span-2 border-b border-gray-200 dark:border-gray-700 my-1"></div>
+                                <div class="text-gray-500">Round Off <i class="fa-solid fa-pen-to-square text-[10px] cursor-pointer" id="btn-pur-round-edit"></i>:</div><div id="pur-t-round" class="text-right text-warning font-mono font-medium tracking-tight">₹0.00</div>
+                                <div class="col-span-2 flex justify-between items-end mt-1">
+                                    <div class="text-lg font-bold text-gray-800 dark:text-gray-100">Grand Total</div>
+                                    <div id="pur-t-grand" class="text-3xl font-black text-danger font-mono tracking-tight bg-red-100/50 dark:bg-red-900/20 px-2 py-0.5 rounded border border-red-100 dark:border-red-800 shadow-sm">₹0.00</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-wrap sm:flex-nowrap justify-end gap-2 mt-6">
+                                <button id="btn-pur-reset" class="flex-1 sm:flex-none px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded hover:bg-gray-50 transition active:scale-95 text-sm">Cancel</button>
+                                <button id="btn-pur-draft" class="flex-1 sm:flex-none px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold rounded border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition active:scale-95 text-sm shadow-sm"><i class="fa-regular fa-bookmark"></i> Draft</button>
+                                <div class="flex-1 sm:flex-none flex w-full sm:w-auto shadow-md rounded border border-danger/80">
+                                    <button id="btn-pur-save" class="flex-[3] bg-danger hover:bg-red-700 text-white font-black px-6 py-2 rounded-l transition-colors active:scale-95 text-sm uppercase tracking-wide flex items-center justify-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Record Bill</button>
+                                    <button id="btn-pur-saveprint" class="flex-[1] bg-red-700 hover:bg-red-800 border-l border-red-500 text-white px-3 py-2 rounded-r transition-colors flex justify-center items-center active:scale-95 text-sm group" title="Save & Print Barcodes">
+                                        <i class="fa-solid fa-barcode group-hover:scale-110 transition-transform"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <button type="submit" id="btn-save-purchase" class="w-full bg-danger hover:bg-red-600 text-white font-bold py-4 rounded-xl shadow-md transition-all active:scale-95 mt-4 text-lg flex items-center justify-center gap-2"><i class="fa-solid fa-boxes-packing"></i> Save Complete Purchase</button>
-                    </form>
-
-                    
+                    </div>
                 </div>
             </div>
+            <!-- ✨ NEW TAB END -->
 
-            <div id="tab-inventory" class="tab max-w-7xl mx-auto">
+            <div id="tab-inventory" class="tab max-w-7xl mx-auto w-full">
                 <h1 class="text-2xl font-bold mb-6">Inventory Management</h1>
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -501,7 +618,7 @@
                     <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                             <h3 class="font-medium text-gray-900 dark:text-white whitespace-nowrap">Stock register</h3>
-                            <div class="flex gap-2 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-full border border-gray-100 dark:border-gray-700">
+                            <div class="flex gap-2 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-full border border-gray-100 dark:border-gray-700 flex-wrap">
                                 <button class="inv-tab active bg-white dark:bg-gray-600 text-primary shadow-sm border border-gray-200 dark:border-gray-500 px-3 py-1 rounded-full text-xs font-medium transition-all" data-filter="all">All</button>
                                 <button class="inv-tab text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1 rounded-full text-xs font-medium transition-all border border-transparent" data-filter="out">Out of stock</button>
                                 <button class="inv-tab text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1 rounded-full text-xs font-medium transition-all border border-transparent" data-filter="low">Low stock</button>
@@ -530,7 +647,7 @@
                 </div>
             </div>
 
-            <div id="tab-settings" class="tab max-w-3xl mx-auto">
+            <div id="tab-settings" class="tab max-w-3xl mx-auto w-full">
                 <h1 class="text-2xl font-bold mb-6">Settings & Configuration</h1>
                 <div class="space-y-6">
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-start md:items-center justify-between">
@@ -543,9 +660,9 @@
                         </select>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                        <div><h3 class="font-bold text-lg"><i class="fa-solid fa-moon text-indigo-500 mr-2"></i> Appearance</h3><p class="text-sm text-gray-500 dark:text-gray-400">Toggle dark/light mode for comfort.</p></div>
-                        <button id="btn-theme-toggle" class="bg-gray-800 dark:bg-white text-white dark:text-gray-900 font-semibold py-2 px-6 rounded-xl shadow transition-all active:scale-95 text-sm">Switch Theme</button>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-start md:items-center justify-between">
+                        <div class="mb-4 md:mb-0"><h3 class="font-bold text-lg"><i class="fa-solid fa-moon text-indigo-500 mr-2"></i> Appearance</h3><p class="text-sm text-gray-500 dark:text-gray-400">Toggle dark/light mode for comfort.</p></div>
+                        <button id="btn-theme-toggle" class="w-full md:w-auto bg-gray-800 dark:bg-white text-white dark:text-gray-900 font-semibold py-2 px-6 rounded-xl shadow transition-all active:scale-95 text-sm">Switch Theme</button>
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -568,7 +685,7 @@
             </div>
         </main>
         
-        <nav class="md:hidden glass-nav border-t border-gray-200 w-full fixed bottom-0 left-0 z-50 px-1 py-1 flex justify-start sm:justify-center items-center safe-area-pb overflow-x-auto no-scrollbar gap-1">
+        <nav class="md:hidden glass-nav border-t border-gray-200 dark:border-gray-700 w-full fixed bottom-0 left-0 z-[100] px-1 py-1 flex justify-start sm:justify-center items-center safe-area-pb overflow-x-auto no-scrollbar gap-1">
             <button onclick="document.getElementById('btn-dashboard').click(); updateMobileNav(this);" class="mob-nav-btn text-primary flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-chart-line text-lg mb-1"></i><span class="text-[10px] font-medium">Home</span></button>
             <button onclick="document.getElementById('btn-sales').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-cart-shopping text-lg mb-1"></i><span class="text-[10px] font-medium">Sales</span></button>
             <button onclick="document.getElementById('btn-purchases').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-boxes-packing text-lg mb-1"></i><span class="text-[10px] font-medium">Buy</span></button>
@@ -587,9 +704,11 @@
             });
             activeBtn.classList.remove('text-gray-400');
             activeBtn.classList.add('text-primary');
+            // Remove overflow block just in case to ensure normal scrolling triggers ok 
             document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
         }
     </script>
+    <!-- Important: Your full system execution begins via type="module" -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
