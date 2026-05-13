@@ -133,8 +133,8 @@ onAuthStateChanged(auth, (user) => {
         startDatabaseListeners();
         setupPredictiveSearch('sale-item', 'sale-item-dropdown', true);
         setupCustomerSearch();
-        setupSupplierSearch(); // Now handles the new pur-supplier logic
-        initPurchaseTable(); // Start ERP Purchase system
+        setupSupplierSearch(); 
+        initPurchaseTable(); 
     } else {
         document.getElementById('login-container').style.display = 'flex';
         document.getElementById('app-container').style.display = 'none';
@@ -303,7 +303,7 @@ function attachSaleTaxLogic() {
 attachSaleTaxLogic();
 
 // ==========================================
-// 7. PREDICTIVE SEARCHES (Inventory)
+// 7. PREDICTIVE SEARCHES (Inventory / Sales)
 // ==========================================
 function setupPredictiveSearch(inputId, dropdownId, isSale) {
     const inputEl = document.getElementById(inputId);
@@ -646,19 +646,25 @@ function initPurchaseTable() {
     const tbody = document.getElementById('pur-tbody');
     const gstMaster = document.getElementById('pur-gst-master');
     const btnSave = document.getElementById('btn-pur-save');
+    const btnSavePrint = document.getElementById('btn-pur-saveprint');
     const btnReset = document.getElementById('btn-pur-reset');
+    const overrideMathToggle = document.getElementById('pur-manual-override');
 
     if(!tbody) return;
 
     // Initialize with 1 empty row
     window.purRows = [{ id: Date.now(), item: '', hsn: '', qty: '', unit: 'Pcs', rate: '', gst: 18, taxable: 0, taxAmt: 0, total: 0 }];
     
-    // Global GST Toggle
+    // Global Toggles
     if(gstMaster) {
         gstMaster.addEventListener('change', () => {
             renderPurchaseTable(); 
             calcPurchaseTotals();
         });
+    }
+
+    if (overrideMathToggle) {
+        overrideMathToggle.addEventListener('change', calcPurchaseTotals);
     }
 
     // Keyboard Shortcuts for table navigation
@@ -693,11 +699,11 @@ function initPurchaseTable() {
         });
     }
 
-    if(btnSave) {
-        btnSave.addEventListener('click', savePurchaseRecord);
-    }
+    // Map Both Save buttons to process
+    if(btnSave) btnSave.addEventListener('click', savePurchaseRecord);
+    if(btnSavePrint) btnSavePrint.addEventListener('click', savePurchaseRecord);
 
-    // Floating Predictive search for table
+    // Create Predictive dropdown
     createTableDropdown();
     renderPurchaseTable();
 }
@@ -706,8 +712,19 @@ function createTableDropdown() {
     if(!document.getElementById('pur-table-dropdown')) {
         const div = document.createElement('div');
         div.id = 'pur-table-dropdown';
-        div.className = 'hidden absolute z-[100] w-64 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-xl max-h-48 overflow-y-auto text-sm';
+        // Changed to Fixed positioning to fix scroll/lag bug
+        div.className = 'hidden fixed z-[9999] w-64 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-xl max-h-48 overflow-y-auto text-sm';
         document.body.appendChild(div);
+        
+        // Hide Dropdown intelligently on scrolls to prevent ghost overlays
+        const tableContainer = document.querySelector('.erp-table-container');
+        if(tableContainer) {
+            tableContainer.addEventListener('scroll', () => div.classList.add('hidden'));
+        }
+        const mainContainer = document.querySelector('main');
+        if(mainContainer) {
+            mainContainer.addEventListener('scroll', () => div.classList.add('hidden'));
+        }
     }
 }
 
@@ -826,17 +843,18 @@ function handleTablePredictiveSearch(inputEl, rowIndex) {
 
     dropdown.innerHTML = html;
     
-    // Position dropdown below input
+    // Fixed positioning mapping based on Viewport bounding rect.
     const rect = inputEl.getBoundingClientRect();
-    dropdown.style.top = `${rect.bottom + window.scrollY}px`;
-    dropdown.style.left = `${rect.left + window.scrollX}px`;
+    dropdown.style.top = `${rect.bottom}px`;
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.width = `${Math.max(rect.width, 250)}px`;
     dropdown.classList.remove('hidden');
 
     dropdown.querySelectorAll('.dropdown-item').forEach(el => {
         el.addEventListener('click', () => {
             window.purRows[rowIndex].item = el.getAttribute('data-name');
             window.purRows[rowIndex].hsn = el.getAttribute('data-hsn');
-            // Normally purchase rate isn't sale rate, but fill as reference if empty
+            // Fill rate as reference
             if(!window.purRows[rowIndex].rate) window.purRows[rowIndex].rate = el.getAttribute('data-rate');
             window.purRows[rowIndex].gst = el.getAttribute('data-gst');
             
@@ -927,21 +945,27 @@ function calcPurchaseTotals() {
 
     let grandRaw = totalTaxable + totalTax;
     let overrideMath = document.getElementById('pur-manual-override')?.checked;
+    
     let grandTotal = overrideMath ? grandRaw : Math.round(grandRaw);
     let roundOff = grandTotal - grandRaw;
 
-    document.getElementById('pur-t-taxable').innerText = `₹${totalTaxable.toFixed(2)}`;
-    document.getElementById('pur-t-cgst').innerText = `₹${(totalTax / 2).toFixed(2)}`;
-    document.getElementById('pur-t-sgst').innerText = `₹${(totalTax / 2).toFixed(2)}`;
-    document.getElementById('pur-t-round').innerText = `₹${roundOff.toFixed(2)}`;
-    document.getElementById('pur-t-grand').innerText = `₹${grandTotal.toFixed(2)}`;
+    if (document.getElementById('pur-t-taxable')) {
+        document.getElementById('pur-t-taxable').innerText = `₹${totalTaxable.toFixed(2)}`;
+        document.getElementById('pur-t-cgst').innerText = `₹${(totalTax / 2).toFixed(2)}`;
+        document.getElementById('pur-t-sgst').innerText = `₹${(totalTax / 2).toFixed(2)}`;
+        document.getElementById('pur-t-round').innerText = `₹${roundOff.toFixed(2)}`;
+        document.getElementById('pur-t-grand').innerText = `₹${grandTotal.toFixed(2)}`;
+    }
 }
 
-async function savePurchaseRecord() {
+async function savePurchaseRecord(e) {
+    // If the event targets the Save & Print button, you can track it here if necessary
+    // const isPrint = e.target.closest('#btn-pur-saveprint') !== null;
+    
     const btn = document.getElementById('btn-pur-save');
     if (btn.disabled) return;
 
-    let validRows = window.purRows.filter(r => r.item.trim() && parseFloat(r.qty) > 0 && parseFloat(r.rate) >= 0);
+    let validRows = window.purRows.filter(r => r.item && r.item.trim() && parseFloat(r.qty) > 0 && parseFloat(r.rate) >= 0);
     if (validRows.length === 0) return alert("Please enter at least one valid item with quantity and rate.");
 
     let dateInput = document.getElementById('pur-date').value;
@@ -992,7 +1016,7 @@ async function savePurchaseRecord() {
                 batch.set(doc(collection(db, "inventory")), { 
                     name: r.item.trim(), 
                     qty: parseFloat(r.qty), 
-                    price: parseFloat(r.rate), // Sets average cost / rate
+                    price: parseFloat(r.rate), // Average cost / rate
                     hasGST: isGstActive && parseFloat(r.gst) > 0, 
                     hsn: r.hsn.trim(), 
                     partNumber: "" 
@@ -1002,8 +1026,12 @@ async function savePurchaseRecord() {
         await batch.commit();
         
         try {
-            if (!allSuppliers.find(s => s.name && s.name.toLowerCase() === suppName.toLowerCase()) && suppName.toLowerCase() !== "cash" && suppName.toLowerCase() !== "cash purchase") {
-                await addDoc(collection(db, "suppliers"), { name: suppName, gstin: suppGstin, createdAt: dateStr });
+            // Strictly check for existing supplier to prevent duplication
+            const cleanSuppName = suppName.trim().toLowerCase();
+            const existingSupplier = allSuppliers.find(s => s.name && s.name.trim().toLowerCase() === cleanSuppName);
+            
+            if (!existingSupplier && cleanSuppName !== "cash" && cleanSuppName !== "cash purchase") {
+                await addDoc(collection(db, "suppliers"), { name: suppName.trim(), gstin: suppGstin, createdAt: dateStr });
             }
         } catch (err) { console.warn("Supplier database check failed.", err); }
 
@@ -1147,7 +1175,7 @@ if(btnExportGst) {
         const purchases =[];
 
         allTransactions.forEach(t => {
-            if(!t.hasGST) return; // Must have GST marked
+            if(!t.hasGST) return; 
             const tDateObj = new Date(t.date);
             if(tDateObj < startObj || tDateObj > endObj) return;
 
