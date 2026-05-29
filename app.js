@@ -1590,6 +1590,84 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
     }
 });
 
+
+(function enforceAuthorIntegrity() {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+
+    // Base64 Encoded to prevent simple CTRL+F deletion
+    const authorSign = atob("QXJwaXQgTWlzaHJh"); // Decodes to "Arpit Mishra"
+    const wmId = "arpit-core-wm-" + Math.random().toString(36).substr(2, 9);
+    
+    const textHTML = `<span class="text-gray-500 dark:text-gray-400 font-extrabold tracking-[0.15em] text-[11px] uppercase opacity-40 select-none transition-opacity">Made with ❤️ by ${authorSign}</span>`;
+
+    // 1. Top Overscroll Watermark
+    const topMark = document.createElement('div');
+    topMark.className = `absolute w-full left-0 flex justify-center items-center pointer-events-none z-0`;
+    topMark.style.top = "-40px"; 
+    topMark.innerHTML = textHTML;
+
+    // 2. Bottom Scroll Watermark (The strictly monitored one)
+    const bottomMark = document.createElement('div');
+    bottomMark.id = wmId;
+    bottomMark.className = `mt-auto pt-20 pb-2 w-full flex justify-center items-center pointer-events-none z-0`;
+    bottomMark.innerHTML = textHTML;
+
+    mainEl.insertBefore(topMark, mainEl.firstChild);
+    mainEl.appendChild(bottomMark);
+
+    // --- SECURITY PROTOCOL: KILL SWITCH ---
+    function triggerKillSwitch() {
+        // Obliterates the entire DOM, removes all UI, and halts the app
+        document.body.innerHTML = `
+            <div style="height:100vh;width:100vw;background:#0f172a;color:#ef4444;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:sans-serif;text-align:center;padding:20px;">
+                <h1 style="font-size:2rem;font-weight:900;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px;">Security Violation</h1>
+                <p style="color:#94a3b8;font-size:1rem;">Application integrity compromised. Core author signature tampered or hidden.</p>
+                <p style="color:#64748b;font-size:0.8rem;margin-top:20px;">ERR_CODE: WATERMARK_REMOVED</p>
+            </div>
+        `;
+        // Freezes the window to stop other scripts from reviving it
+        Object.freeze(document.body);
+    }
+
+    // --- INTEGRITY CHECKER ---
+    function verifyIntegrity() {
+        const wm = document.getElementById(wmId);
+        // 1. Check if deleted from DOM
+        if (!wm) return false;
+        
+        // 2. Check if text was altered
+        const content = wm.innerText || wm.textContent;
+        if (!content.includes(authorSign)) return false;
+
+        // 3. Check if someone tried to hide it via CSS (display:none, opacity:0, visibility:hidden)
+        const style = window.getComputedStyle(wm);
+        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.1) {
+            return false;
+        }
+
+        return true;
+    }
+
+    // Protection Layer 1: Real-time DOM Monitoring
+    const observer = new MutationObserver(() => {
+        if (!verifyIntegrity()) triggerKillSwitch();
+    });
+    
+    observer.observe(document.body, { 
+        childList: true, 
+        subtree: true, 
+        attributes: true, 
+        attributeFilter: ['style', 'class', 'hidden'] 
+    });
+
+    // Protection Layer 2: Interval Heartbeat (Catches DevTool injections)
+    setInterval(() => {
+        if (!verifyIntegrity()) triggerKillSwitch();
+    }, 1500);
+
+})();
+
 // ==========================================
 // 15. IN DEPTH ANALYTICS (Charts & Tables)
 // ==========================================
