@@ -1590,7 +1590,9 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
     }
 });
 
-
+// ==========================================
+// 19. STRICT UNIVERSAL WATERMARK (Anti-Tamper) - FIXED
+// ==========================================
 (function enforceAuthorIntegrity() {
     const mainEl = document.querySelector('main');
     if (!mainEl) return;
@@ -1618,7 +1620,7 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
 
     // --- SECURITY PROTOCOL: KILL SWITCH ---
     function triggerKillSwitch() {
-        // Obliterates the entire DOM, removes all UI, and halts the app
+        // Obliterates the entire DOM and halts the app
         document.body.innerHTML = `
             <div style="height:100vh;width:100vw;background:#0f172a;color:#ef4444;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:sans-serif;text-align:center;padding:20px;">
                 <h1 style="font-size:2rem;font-weight:900;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px;">Security Violation</h1>
@@ -1626,7 +1628,6 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
                 <p style="color:#64748b;font-size:0.8rem;margin-top:20px;">ERR_CODE: WATERMARK_REMOVED</p>
             </div>
         `;
-        // Freezes the window to stop other scripts from reviving it
         Object.freeze(document.body);
     }
 
@@ -1640,7 +1641,15 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
         const content = wm.innerText || wm.textContent;
         if (!content.includes(authorSign)) return false;
 
-        // 3. Check if someone tried to hide it via CSS (display:none, opacity:0, visibility:hidden)
+        // --- THE FIX: LOGIN SCREEN BYPASS ---
+        // If the main app container is hidden (meaning we are on the login screen),
+        // the watermark will naturally be hidden. So we bypass the CSS check here.
+        const appContainer = document.getElementById('app-container');
+        if (appContainer && window.getComputedStyle(appContainer).display === 'none') {
+            return true; 
+        }
+
+        // 3. Check if someone tried to hide it via CSS (runs ONLY when logged in)
         const style = window.getComputedStyle(wm);
         if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.1) {
             return false;
@@ -1661,7 +1670,7 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
         attributeFilter: ['style', 'class', 'hidden'] 
     });
 
-    // Protection Layer 2: Interval Heartbeat (Catches DevTool injections)
+    // Protection Layer 2: Interval Heartbeat
     setInterval(() => {
         if (!verifyIntegrity()) triggerKillSwitch();
     }, 1500);
