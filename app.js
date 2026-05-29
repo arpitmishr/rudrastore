@@ -31,7 +31,9 @@ let unsubInventory = null;
 let unsubTransactions = null;
 let unsubCustomers = null;
 let unsubSuppliers = null;
+let unsubVendorPayments = null;
 
+let allVendorPayments = [];
 let allTransactions = [];
 let allInventory = [];
 let allCustomers = [];
@@ -209,7 +211,7 @@ if(formLogin) {
 const btnLogout = document.getElementById('btn-logout');
 if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
 
-const tabs = ['dashboard', 'transactions', 'analytics', 'sales', 'purchases', 'inventory', 'settings'];
+const tabs = ['dashboard', 'transactions', 'analytics', 'sales', 'purchases', 'inventory', 'settings', 'vendors'];
 
 tabs.forEach(t => {
     const el = document.getElementById(`tab-${t}`);
@@ -293,6 +295,14 @@ function startDatabaseListeners() {
         updateDashboardMetrics();
     });
 
+  unsubVendorPayments = onSnapshot(collection(db, "vendorPayments"), (snapshot) => {
+        allVendorPayments = [];
+        snapshot.forEach((doc) => {
+            const p = doc.data(); p.id = doc.id; allVendorPayments.push(p);
+        });
+        if (document.getElementById('tab-vendors')?.classList.contains('active')) renderVendors();
+    });
+  
     unsubTransactions = onSnapshot(query(collection(db, "transactions"), orderBy("date", "desc")), (snapshot) => {
         allTransactions =[];
         snapshot.forEach((docSnap) => {
@@ -314,6 +324,7 @@ function stopDatabaseListeners() {
     if (unsubTransactions) unsubTransactions();
     if (unsubCustomers) unsubCustomers(); 
     if (unsubSuppliers) unsubSuppliers();
+  if (unsubVendorPayments) unsubVendorPayments();
 }
 
 // ==========================================
@@ -2022,3 +2033,184 @@ document.getElementById('btn-merge-dup')?.addEventListener('click', async () => 
         btn.innerHTML = ogText; btn.disabled = false; 
     }
 });
+
+// ==========================================
+// 18. VENDORS & PAYMENTS FEATURE
+// ==========================================
+function renderVendors() {
+    const tbody = document.getElementById('tbody-vendors');
+    if (!tbody) return;
+
+    // 1. Gather all unique suppliers from transactions & suppliers db
+    const vendorMap = {};
+    
+    // Seed with explicitly saved suppliers
+    allSuppliers.forEach(s => {
+        if (!vendorMap[s.name]) vendorMap[s.name] = { billed: 0, paid: 0 };
+    });
+
+    // 2. Sum Purchases
+    allTransactions.forEach(t => {
+        if (t.type === 'Purchase' && t.supplier && t.supplier.toLowerCase() !== 'cash' && t.supplier.toLowerCase() !== 'cash purchase') {
+            if (!vendorMap[t.supplier]) vendorMap[t.supplier] = { billed: 0, paid: 0 };
+            vendorMap[t.supplier].billed += Number(t.amount || 0);
+        }
+    });
+
+    // 3. Sum Payments
+    allVendorPayments.forEach(p => {
+        if (p.supplier && vendorMap[p.supplier]) {
+            vendorMap[p.supplier].paid += Number(p.amount || 0);
+        } else if (p.supplier) {
+            vendorMap[p.supplier] = { billed: 0, paid: Number(p.amount || 0) };
+        }
+    });
+
+    let totalGlobalBilled = 0;
+    let totalGlobalPaid = 0;
+    let html = '';
+
+    for (const [name, data] of Object.entries(vendorMap)) {
+        if (data.billed === 0 && data.paid === 0) continue; // Skip empty
+        
+        let balance = data.billed - data.paid;
+        totalGlobalBilled += data.billed;
+        totalGlobalPaid += data.paid;
+
+        let balColor = balance > 0 ? "text-danger" : (balance < 0 ? "text-success" : "text-gray-500");
+        let balText = balance < 0 ? `+₹${Math.abs(balance).toFixed(2)} (Adv)` : `₹${balance.toFixed(2)}`;
+
+        html += `
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <td class="py-3 px-4 font-bold text-gray-800 dark:text-gray-200">${name}</td>
+                <td class="py-3 px-4 text-right">₹${data.billed.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right text-success">₹${data.paid.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right font-bold ${balColor}">${balText}</td>
+                <td class="py-3 px-4 text-center">
+                    <button onclick="window.openVendorDetails('${name}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/60 dark:text-indigo-400 px-3 py-1 rounded shadow-sm text-xs font-bold transition-colors">
+                        View / Pay
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    if (html === '') html = '<tr><td colspan="5" class="py-6 text-center text-gray-500">No vendor data found.</td></tr>';
+    tbody.innerHTML = html;
+
+    // Update Top Metric Cards
+    if (document.getElementById('vendor-total-purchased')) {
+        document.getElementById('vendor-total-purchased').innerText = `₹${totalGlobalBilled.toFixed(2)}`;
+        document.getElementById('vendor-total-paid').innerText = `₹${totalGlobalPaid.toFixed(2)}`;
+        let globalBal = totalGlobalBilled - totalGlobalPaid;
+        document.getElementById('vendor-total-payable').innerText = `₹${globalBal.toFixed(2)}`;
+    }
+}
+
+// Ensure the tab render executes when you switch to it
+document.getElementById('btn-vendors')?.addEventListener('click', renderVendors);
+
+// Expose the view function globally
+window.openVendorDetails = function(vendorName) {
+    document.getElementById('modal-vendor-name').innerText = vendorName;
+    document.getElementById('pay-vendor-name').value = vendorName;
+    
+    // Group purchases by Invoice
+    const purchases = allTransactions.filter(t => t.type === 'Purchase' && t.supplier === vendorName);
+    const invoices = {};
+    let totalBilled = 0;
+
+    purchases.forEach(p => {
+        let inv = p.invoice || "No Invoice";
+        if (!invoices[inv]) invoices[inv] = { date: p.date, items: [], total: 0 };
+        invoices[inv].items.push(`${p.item} (x${p.qty})`);
+        invoices[inv].total += Number(p.amount);
+        totalBilled += Number(p.amount);
+    });
+
+    let invHtml = '';
+    for (const [inv, data] of Object.entries(invoices)) {
+        let dateStr = new Date(data.date).toLocaleDateString('en-GB');
+        invHtml += `
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-lg shadow-sm">
+                <div class="flex justify-between items-center mb-2 border-b border-gray-100 dark:border-gray-700 pb-2">
+                    <span class="font-bold text-sm text-gray-800 dark:text-gray-200"><i class="fa-solid fa-hashtag text-gray-400 text-xs"></i> ${inv}</span>
+                    <span class="text-xs text-gray-500">${dateStr}</span>
+                </div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 mb-2 leading-relaxed">
+                    ${data.items.join(', ')}
+                </div>
+                <div class="text-right font-bold text-danger text-sm">₹${data.total.toFixed(2)}</div>
+            </div>
+        `;
+    }
+    if (invHtml === '') invHtml = '<p class="text-sm text-gray-500 italic">No purchase history found.</p>';
+    document.getElementById('modal-vendor-invoices').innerHTML = invHtml;
+
+    // Payment History & Balance Calculation
+    const payments = allVendorPayments.filter(p => p.supplier === vendorName).sort((a,b) => new Date(b.date) - new Date(a.date));
+    let totalPaid = 0;
+    let payHtml = '';
+
+    payments.forEach(p => {
+        totalPaid += Number(p.amount);
+        let dateStr = new Date(p.date).toLocaleDateString('en-GB');
+        let refStr = p.ref ? `(${p.ref})` : '';
+        payHtml += `
+            <li class="flex justify-between items-center bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                <span><span class="text-gray-400 mr-2">${dateStr}</span> ${refStr}</span>
+                <span class="font-bold text-success">₹${Number(p.amount).toFixed(2)}</span>
+            </li>
+        `;
+    });
+    
+    if (payHtml === '') payHtml = '<li class="text-gray-500 italic">No payments recorded.</li>';
+    document.getElementById('modal-vendor-payments').innerHTML = payHtml;
+
+    // Balance
+    let bal = totalBilled - totalPaid;
+    document.getElementById('modal-vendor-balance').innerText = `₹${bal.toFixed(2)}`;
+
+    // Show Modal
+    document.getElementById('modal-vendor').classList.remove('hidden');
+}
+
+// Payment Submission
+const formVendorPay = document.getElementById('form-vendor-payment');
+if (formVendorPay) {
+    formVendorPay.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = formVendorPay.querySelector('button[type="submit"]');
+        const vendorName = document.getElementById('pay-vendor-name').value;
+        const amount = parseFloat(document.getElementById('pay-amount').value);
+        const ref = document.getElementById('pay-ref').value.trim();
+
+        if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
+
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+        try {
+            await addDoc(collection(db, "vendorPayments"), {
+                supplier: vendorName,
+                amount: amount,
+                ref: ref,
+                date: new Date().toISOString()
+            });
+            formVendorPay.reset();
+            
+            // Refresh modal and underlying table
+            window.openVendorDetails(vendorName);
+            renderVendors();
+
+            if(typeof showSuccessAnimation === 'function') showSuccessAnimation("Payment Recorded!");
+            
+        } catch (error) {
+            console.error(error);
+            alert("Error saving payment.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `Submit Payment`;
+        }
+    });
+}
