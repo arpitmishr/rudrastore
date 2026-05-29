@@ -1591,89 +1591,63 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
 });
 
 // ==========================================
-// 19. STRICT UNIVERSAL WATERMARK (Anti-Tamper) - FIXED
+// 19. MODERATE UNIVERSAL WATERMARK (Self-Healing)
 // ==========================================
-(function enforceAuthorIntegrity() {
-    const mainEl = document.querySelector('main');
-    if (!mainEl) return;
-
+(function enforceAuthorIntegrityModerate() {
     // Base64 Encoded to prevent simple CTRL+F deletion
-    const authorSign = atob("QXJwaXQgTWlzaHJh"); // Decodes to "Arpit Mishra"
-    const wmId = "arpit-core-wm-" + Math.random().toString(36).substr(2, 9);
+    const authorSign = atob("QXJwaXQgTWlzaHJh"); 
+    const wmBottomId = "arpit-core-wm-bottom";
+    const wmTopId = "arpit-core-wm-top";
     
-    const textHTML = `<span class="text-gray-500 dark:text-gray-400 font-extrabold tracking-[0.15em] text-[11px] uppercase opacity-40 select-none transition-opacity">Made with ❤️ by ${authorSign}</span>`;
+    function injectWatermarks() {
+        const mainEl = document.querySelector('main');
+        if (!mainEl) return;
 
-    // 1. Top Overscroll Watermark
-    const topMark = document.createElement('div');
-    topMark.className = `absolute w-full left-0 flex justify-center items-center pointer-events-none z-0`;
-    topMark.style.top = "-40px"; 
-    topMark.innerHTML = textHTML;
+        const textHTML = `<span class="text-gray-500 dark:text-gray-400 font-extrabold tracking-[0.15em] text-[11px] uppercase opacity-40 select-none pointer-events-none transition-opacity">Made with ❤️ by ${authorSign}</span>`;
 
-    // 2. Bottom Scroll Watermark (The strictly monitored one)
-    const bottomMark = document.createElement('div');
-    bottomMark.id = wmId;
-    bottomMark.className = `mt-auto pt-20 pb-2 w-full flex justify-center items-center pointer-events-none z-0`;
-    bottomMark.innerHTML = textHTML;
-
-    mainEl.insertBefore(topMark, mainEl.firstChild);
-    mainEl.appendChild(bottomMark);
-
-    // --- SECURITY PROTOCOL: KILL SWITCH ---
-    function triggerKillSwitch() {
-        // Obliterates the entire DOM and halts the app
-        document.body.innerHTML = `
-            <div style="height:100vh;width:100vw;background:#0f172a;color:#ef4444;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:sans-serif;text-align:center;padding:20px;">
-                <h1 style="font-size:2rem;font-weight:900;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px;">Security Violation</h1>
-                <p style="color:#94a3b8;font-size:1rem;">Application integrity compromised. Core author signature tampered or hidden.</p>
-                <p style="color:#64748b;font-size:0.8rem;margin-top:20px;">ERR_CODE: WATERMARK_REMOVED</p>
-            </div>
-        `;
-        Object.freeze(document.body);
-    }
-
-    // --- INTEGRITY CHECKER ---
-    function verifyIntegrity() {
-        const wm = document.getElementById(wmId);
-        // 1. Check if deleted from DOM
-        if (!wm) return false;
-        
-        // 2. Check if text was altered
-        const content = wm.innerText || wm.textContent;
-        if (!content.includes(authorSign)) return false;
-
-        // --- THE FIX: LOGIN SCREEN BYPASS ---
-        // If the main app container is hidden (meaning we are on the login screen),
-        // the watermark will naturally be hidden. So we bypass the CSS check here.
-        const appContainer = document.getElementById('app-container');
-        if (appContainer && window.getComputedStyle(appContainer).display === 'none') {
-            return true; 
+        // 1. Top Overscroll Watermark (Checks if missing)
+        if (!document.getElementById(wmTopId)) {
+            const topMark = document.createElement('div');
+            topMark.id = wmTopId;
+            topMark.className = `absolute w-full left-0 flex justify-center items-center pointer-events-none z-0`;
+            topMark.style.top = "-40px"; 
+            topMark.innerHTML = textHTML;
+            if (mainEl.firstChild) {
+                mainEl.insertBefore(topMark, mainEl.firstChild);
+            }
         }
 
-        // 3. Check if someone tried to hide it via CSS (runs ONLY when logged in)
-        const style = window.getComputedStyle(wm);
-        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.1) {
-            return false;
+        // 2. Bottom Scroll Watermark (Checks if missing)
+        if (!document.getElementById(wmBottomId)) {
+            const bottomMark = document.createElement('div');
+            bottomMark.id = wmBottomId;
+            bottomMark.className = `mt-auto pt-20 pb-2 w-full flex justify-center items-center pointer-events-none z-0`;
+            bottomMark.innerHTML = textHTML;
+            mainEl.appendChild(bottomMark);
         }
-
-        return true;
     }
 
-    // Protection Layer 1: Real-time DOM Monitoring
-    const observer = new MutationObserver(() => {
-        if (!verifyIntegrity()) triggerKillSwitch();
-    });
-    
-    observer.observe(document.body, { 
-        childList: true, 
-        subtree: true, 
-        attributes: true, 
-        attributeFilter: ['style', 'class', 'hidden'] 
-    });
+    // Try to inject initially (might wait until user logs in and <main> is active)
+    setTimeout(injectWatermarks, 1000);
 
-    // Protection Layer 2: Interval Heartbeat
+    // --- SELF-HEALING HEARTBEAT ---
+    // Every 2 seconds, check if the watermark is still there. 
+    // If it was deleted, silently put it right back.
     setInterval(() => {
-        if (!verifyIntegrity()) triggerKillSwitch();
-    }, 1500);
+        const bottomWm = document.getElementById(wmBottomId);
+        
+        // 1. If someone deleted the HTML element entirely, regenerate it.
+        if (!bottomWm) {
+            injectWatermarks();
+        } 
+        // 2. If the element is there but someone changed the text, fix it.
+        else {
+            const content = bottomWm.innerText || bottomWm.textContent;
+            if (!content.includes(authorSign)) {
+                bottomWm.innerHTML = `<span class="text-gray-500 dark:text-gray-400 font-extrabold tracking-[0.15em] text-[11px] uppercase opacity-40 select-none pointer-events-none transition-opacity">Made with ❤️ by ${authorSign}</span>`;
+            }
+        }
+    }, 2000);
 
 })();
 
