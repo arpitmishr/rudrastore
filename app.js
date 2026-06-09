@@ -2,9 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, writeBatch, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// ==========================================
-// 1. FIREBASE CONFIGURATION
-// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDM-FWxsSkNOCXdGbc5cQ5H1_jmGiBby10",
   authDomain: "rudrastore-46f12.firebaseapp.com",
@@ -24,9 +21,6 @@ window.collection = collection;
 window.setDoc = setDoc;
 window.getDoc = getDoc;
 
-// ==========================================
-// 2. GLOBAL VARIABLES & STATE CODES
-// ==========================================
 let unsubInventory = null;
 let unsubTransactions = null;
 let unsubCustomers = null;
@@ -65,13 +59,12 @@ const STATE_CODES = {
     "35": "Andaman & Nicobar Islands", "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh"
 };
 
-// ==========================================
-// 3. INITIAL SETUP & UTILS
-// ==========================================
 const todayStr = new Date().toISOString().split('T')[0];
 if(document.getElementById('filter-trans-start')) document.getElementById('filter-trans-start').value = todayStr;
 if(document.getElementById('filter-trans-end')) document.getElementById('filter-trans-end').value = todayStr;
 if(document.getElementById('pur-date')) document.getElementById('pur-date').value = todayStr;
+if(document.getElementById('sale-date')) document.getElementById('sale-date').value = todayStr;
+if(document.getElementById('cosmetic-date')) document.getElementById('cosmetic-date').value = todayStr;
 
 function showSuccessAnimation(msg = "Success!") {
     const overlay = document.getElementById('success-overlay');
@@ -172,9 +165,6 @@ function injectStateSetting() {
     }
 }
 
-// ==========================================
-// 4. AUTHENTICATION & STRICT TAB FIXES
-// ==========================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById('login-container').style.display = 'none';
@@ -268,9 +258,6 @@ if(globalYearEl) {
     });
 }
 
-// ==========================================
-// 5. DATABASE LISTENERS
-// ==========================================
 function startDatabaseListeners() {
     unsubCustomers = onSnapshot(collection(db, "customers"), (snapshot) => {
         allCustomers =[];
@@ -324,12 +311,9 @@ function stopDatabaseListeners() {
     if (unsubTransactions) unsubTransactions();
     if (unsubCustomers) unsubCustomers(); 
     if (unsubSuppliers) unsubSuppliers();
-  if (unsubVendorPayments) unsubVendorPayments();
+    if (unsubVendorPayments) unsubVendorPayments();
 }
 
-// ==========================================
-// 6. GST AUTO-CALCULATION LOGIC (Sales)
-// ==========================================
 function attachSaleTaxLogic() {
     const qtyEl = document.getElementById(`sale-qty`);
     const rateEl = document.getElementById(`sale-rate`);
@@ -382,7 +366,6 @@ function attachSaleTaxLogic() {
                 let rateVal = parseFloat(gstRate?.value) || 18;
                 let taxAmt = taxVal * (rateVal / 100);
                 
-                // Smart IGST vs CGST/SGST detection
                 const myState = localStorage.getItem('myStateCode') || '';
                 const custGstin = document.getElementById('sale-gstin')?.value.trim().toUpperCase() || '';
                 let isIgst = false;
@@ -411,9 +394,6 @@ function attachSaleTaxLogic() {
 }
 attachSaleTaxLogic();
 
-// ==========================================
-// 7. PREDICTIVE SEARCHES (Inventory / Sales)
-// ==========================================
 function setupPredictiveSearch(inputId, dropdownId, isSale) {
     const inputEl = document.getElementById(inputId);
     const dropdownEl = document.getElementById(dropdownId);
@@ -509,9 +489,6 @@ function setupPredictiveSearch(inputId, dropdownId, isSale) {
     }
 }
 
-// ==========================================
-// 8. MASTER SEARCHES (Customer & Supplier)
-// ==========================================
 function setupCustomerSearch() {
     const custInput = document.getElementById('sale-customer');
     const gstinInput = document.getElementById('sale-gstin');
@@ -612,7 +589,6 @@ function setupSupplierSearch() {
             } else {
                 badgeEl?.classList.add('hidden');
             }
-            // Trigger calculation to update IGST vs CGST dynamically
             if(typeof calcPurchaseTotals === 'function') calcPurchaseTotals();
         });
     }
@@ -689,9 +665,6 @@ function setupSupplierSearch() {
     }
 }
 
-// ==========================================
-// 9. CART UIS & ADD ITEMS (Sales Only)
-// ==========================================
 function updateCartUI() {
     const cartContainer = document.getElementById('cart-container');
     const cartList = document.getElementById('cart-list');
@@ -763,15 +736,12 @@ if(btnAddToCart) {
     });
 }
 
-// ==========================================
-// 10. NEW ERP PURCHASE TABLE LOGIC
-// ==========================================
 window.calcPurchaseTotals = calcPurchaseTotals;
 
 function initPurchaseTable() {
     const tbody = document.getElementById('pur-tbody');
     const gstMaster = document.getElementById('pur-gst-master');
-    const btnSave = document.getElementById('btn-pur-save');
+    const btnSave = document.getElementById('pur-save');
     const btnSavePrint = document.getElementById('btn-pur-saveprint');
     const btnReset = document.getElementById('btn-pur-reset');
     const overrideMathToggle = document.getElementById('pur-manual-override');
@@ -1060,7 +1030,6 @@ function calcPurchaseTotals() {
     let grandTotal = overrideMath ? grandRaw : Math.round(grandRaw);
     let roundOff = grandTotal - grandRaw;
 
-    // IGST vs CGST logic
     const myState = localStorage.getItem('myStateCode') || '';
     const suppGstin = document.getElementById('pur-gstin')?.value.trim().toUpperCase() || '';
     let isIgst = false;
@@ -1070,7 +1039,6 @@ function calcPurchaseTotals() {
         if (suppState !== myState) isIgst = true;
     }
 
-    // Toggle Labels
     document.querySelectorAll('.group-local').forEach(el => {
         if(isIgst) { el.style.display = 'none'; el.classList.remove('flex', 'grid'); }
         else { el.style.display = ''; } 
@@ -1111,7 +1079,6 @@ async function savePurchaseRecord(e) {
     let suppGstin = document.getElementById('pur-gstin')?.value.trim().toUpperCase() || "";
     let isGstActive = document.getElementById('pur-gst-master')?.checked ?? true;
 
-    // Check IGST
     const myState = localStorage.getItem('myStateCode') || '';
     let isIgst = false;
     if (myState && suppGstin.length >= 2) {
@@ -1179,13 +1146,12 @@ async function savePurchaseRecord(e) {
                 allSuppliers.push({ name: suppName.trim(), gstin: suppGstin });
                 await addDoc(collection(db, "suppliers"), { name: suppName.trim(), gstin: suppGstin, createdAt: dateStr });
             }
-        } catch (err) { console.warn("Supplier database check failed.", err); }
+        } catch (err) { }
 
         document.getElementById('btn-pur-reset').click();
         showSuccessAnimation(`Purchase Bill ${invNo !== 'N/A' ? invNo : ''} Saved!`);
         
     } catch (e) { 
-        console.error("Purchase error", e);
         alert("Error saving purchase: " + e.message); 
     } finally { 
         btn.disabled = false; 
@@ -1194,9 +1160,6 @@ async function savePurchaseRecord(e) {
     }
 }
 
-// ==========================================
-// 11. SAVE LOGIC (Sales & Cosmetic)
-// ==========================================
 const saleForm = document.getElementById('form-sale');
 if(saleForm) {
     saleForm.onsubmit = async (e) => {
@@ -1220,7 +1183,8 @@ if(saleForm) {
 
         try {
             const batch = writeBatch(db); 
-            const date = new Date().toISOString(); 
+            let dateInput = document.getElementById('sale-date')?.value;
+            const date = dateInput ? new Date(dateInput + 'T12:00:00').toISOString() : new Date().toISOString();
             const invoiceNo = "INV-" + Date.now().toString().slice(-6);
             
             for (let i = 0; i < window.saleCart.length; i++) {
@@ -1255,18 +1219,18 @@ if(saleForm) {
                     allCustomers.push({ name: custName.trim(), gstin: custGstin });
                     await addDoc(collection(db, "customers"), { name: custName.trim(), gstin: custGstin, createdAt: date });
                 }
-            } catch (err) { console.warn("Customer database check failed.", err); }
+            } catch (err) { }
             
             window.saleCart =[]; 
             updateCartUI(); 
             saleForm.reset(); 
+            if(document.getElementById('sale-date')) document.getElementById('sale-date').value = new Date().toISOString().split('T')[0];
             const gstInd = document.getElementById('gst-indicator');
             if(gstInd) gstInd.classList.add('hidden');
             
             showSuccessAnimation(`Invoice ${invoiceNo} Generated!`);
             
         } catch (error) { 
-            console.error("Sale error", error);
             alert("Error saving sale: " + error.message); 
         } finally { 
             submitBtn.disabled = false; 
@@ -1293,14 +1257,16 @@ if (cosmeticForm) {
         let rate = parseFloat(document.getElementById('cosmetic-rate').value);
         let amount = qty * rate; 
         const hasGST = document.getElementById('cosmetic-gst').checked;
-        const date = new Date().toISOString();
+        let cDateInput = document.getElementById('cosmetic-date')?.value;
+        const date = cDateInput ? new Date(cDateInput + 'T12:00:00').toISOString() : new Date().toISOString();
         
         try {
             await addDoc(collection(db, "transactions"), { type: "Cosmetic Sale", item, qty, cost, rate, amount, date, hasGST });
             cosmeticForm.reset(); 
+            if(document.getElementById('cosmetic-date')) document.getElementById('cosmetic-date').value = new Date().toISOString().split('T')[0];
             showSuccessAnimation("Cosmetic Sale Saved!");
         } catch (e) { 
-            console.error(e); alert("Error saving cosmetic sale."); 
+            alert("Error saving cosmetic sale."); 
         } finally { 
             submitBtn.disabled = false; 
             submitBtn.innerHTML = originalBtnHTML; 
@@ -1308,9 +1274,6 @@ if (cosmeticForm) {
     };
 }
 
-// ==========================================
-// 12. GST EXCEL EXPORT REPORT
-// ==========================================
 const btnExportGst = document.getElementById('btn-export-gst');
 if(btnExportGst) {
     btnExportGst.addEventListener('click', () => {
@@ -1365,9 +1328,6 @@ if(btnExportGst) {
     });
 }
 
-// ==========================================
-// 13. ANALYTICS & DASHBOARD METRICS
-// ==========================================
 function updateDashboardMetrics() {
     if (!allInventory || !allTransactions) return;
     const todayISO = new Date().toISOString().split('T')[0];
@@ -1490,9 +1450,6 @@ function renderDashboardTopItems() {
     });
 }
 
-// ==========================================
-// 14. TRANSACTIONS LEDGER & RETURNS
-// ==========================================
 const btnTransFilter = document.getElementById('btn-trans-filter');
 const btnTransClear = document.getElementById('btn-trans-clear');
 if(btnTransFilter) btnTransFilter.addEventListener('click', renderTransactionsTable);
@@ -1590,11 +1547,7 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
     }
 });
 
-// ==========================================
-// 19. MODERATE UNIVERSAL WATERMARK (Self-Healing)
-// ==========================================
 (function enforceAuthorIntegrityModerate() {
-    // Base64 Encoded to prevent simple CTRL+F deletion
     const authorSign = atob("QXJwaXQgTWlzaHJh"); 
     const wmBottomId = "arpit-core-wm-bottom";
     const wmTopId = "arpit-core-wm-top";
@@ -1605,7 +1558,6 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
 
         const textHTML = `<span class="text-gray-500 dark:text-gray-400 font-extrabold tracking-[0.15em] text-[11px] uppercase opacity-40 select-none pointer-events-none transition-opacity">Made with ❤️ by ${authorSign}</span>`;
 
-        // 1. Top Overscroll Watermark (Checks if missing)
         if (!document.getElementById(wmTopId)) {
             const topMark = document.createElement('div');
             topMark.id = wmTopId;
@@ -1617,7 +1569,6 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
             }
         }
 
-        // 2. Bottom Scroll Watermark (Checks if missing)
         if (!document.getElementById(wmBottomId)) {
             const bottomMark = document.createElement('div');
             bottomMark.id = wmBottomId;
@@ -1627,20 +1578,14 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
         }
     }
 
-    // Try to inject initially (might wait until user logs in and <main> is active)
     setTimeout(injectWatermarks, 1000);
 
-    // --- SELF-HEALING HEARTBEAT ---
-    // Every 2 seconds, check if the watermark is still there. 
-    // If it was deleted, silently put it right back.
     setInterval(() => {
         const bottomWm = document.getElementById(wmBottomId);
         
-        // 1. If someone deleted the HTML element entirely, regenerate it.
         if (!bottomWm) {
             injectWatermarks();
         } 
-        // 2. If the element is there but someone changed the text, fix it.
         else {
             const content = bottomWm.innerText || bottomWm.textContent;
             if (!content.includes(authorSign)) {
@@ -1651,9 +1596,6 @@ document.querySelector('#table-transactions tbody')?.addEventListener('click', a
 
 })();
 
-// ==========================================
-// 15. IN DEPTH ANALYTICS (Charts & Tables)
-// ==========================================
 document.getElementById('btn-ana-filter')?.addEventListener('click', runAnalytics); 
 document.getElementById('btn-ana-clear')?.addEventListener('click', () => { document.getElementById('ana-start').value = ''; document.getElementById('ana-end').value = ''; runAnalytics(); }); 
 document.getElementById('btn-ana-today')?.addEventListener('click', () => { const today = new Date().toISOString().split('T')[0]; document.getElementById('ana-start').value = today; document.getElementById('ana-end').value = today; runAnalytics(); }); 
@@ -1841,9 +1783,6 @@ function renderCharts(monthlyData, abcTotals, fsnTotals) {
     }
 }
 
-// ==========================================
-// 16. INVENTORY MANAGEMENT (Table, Add, Edit)
-// ==========================================
 function updateInventoryStats() {
     let totalItems = allInventory.length; 
     let outCount = 0; let lowCount = 0; let healthyCount = 0;
@@ -1874,7 +1813,6 @@ function updateInventoryStats() {
         document.getElementById('stat-inv-out').innerText = outCount; 
         document.getElementById('stat-inv-low').innerText = lowCount;
         
-        // Update MBA health progress bars
         document.getElementById('bar-healthy').style.width = pctHealthy + '%';
         document.getElementById('bar-low').style.width = pctLow + '%';
         document.getElementById('bar-out').style.width = pctOut + '%';
@@ -1909,7 +1847,6 @@ function renderInventoryTable() {
         const itemPrice = Number(item.price) || 0; 
         const stockValue = itemQty * itemPrice;
         
-        // Calculate visual stock level bar (Assumes 20 is a "full" visual bar, adjusts dynamically)
         let stockPct = Math.min((itemQty / 20) * 100, 100);
         let barColor = itemQty === 0 ? 'bg-danger' : (itemQty <= 2 ? 'bg-warning' : 'bg-success');
 
@@ -1939,6 +1876,15 @@ function renderInventoryTable() {
             </tr>
         `);
     });
+
+    if (filtered.length === 0) rowsHtml.push(`<tr><td colspan="6" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">No items found.</td></tr>`); 
+    tbody.innerHTML = rowsHtml.join('');
+}
+
+document.getElementById('search-inventory')?.addEventListener('input', (e) => { 
+    currentInventorySearch = e.target.value; 
+    renderInventoryTable(); 
+});
 
 document.querySelectorAll('.inv-tab').forEach(tab => { 
     tab.addEventListener('click', (e) => { 
@@ -2018,9 +1964,6 @@ document.querySelector('#table-inventory tbody')?.addEventListener('click', asyn
     }
 });
 
-// ==========================================
-// 17. DATA MANAGEMENT (Settings & Excel)
-// ==========================================
 document.getElementById('btn-trigger-excel')?.addEventListener('click', () => { 
     document.getElementById('excel-file').click(); 
 });
@@ -2068,7 +2011,7 @@ document.getElementById('excel-file')?.addEventListener('change', async (e) => {
             } 
             showSuccessAnimation("Excel Successfully Imported!");
         } catch (error) { 
-            console.error(error); alert("An error occurred during import."); 
+            alert("An error occurred during import."); 
         } finally { 
             btn.innerHTML = ogText; btn.disabled = false; document.getElementById('excel-file').value = ''; 
         }
@@ -2124,28 +2067,22 @@ document.getElementById('btn-merge-dup')?.addEventListener('click', async () => 
         if(mergeCount > 0) showSuccessAnimation(`Merged ${mergeCount} Duplicate Groups!`); 
         else alert("No duplicates found.");
     } catch (err) { 
-        console.error(err); alert("An error occurred during merge."); 
+        alert("An error occurred during merge."); 
     } finally { 
         btn.innerHTML = ogText; btn.disabled = false; 
     }
 });
 
-// ==========================================
-// 18. VENDORS & PAYMENTS FEATURE
-// ==========================================
 function renderVendors() {
     const tbody = document.getElementById('tbody-vendors');
     if (!tbody) return;
 
-    // 1. Gather all unique suppliers from transactions & suppliers db
     const vendorMap = {};
     
-    // Seed with explicitly saved suppliers
     allSuppliers.forEach(s => {
         if (!vendorMap[s.name]) vendorMap[s.name] = { billed: 0, paid: 0 };
     });
 
-    // 2. Sum Purchases
     allTransactions.forEach(t => {
         if (t.type === 'Purchase' && t.supplier && t.supplier.toLowerCase() !== 'cash' && t.supplier.toLowerCase() !== 'cash purchase') {
             if (!vendorMap[t.supplier]) vendorMap[t.supplier] = { billed: 0, paid: 0 };
@@ -2153,7 +2090,6 @@ function renderVendors() {
         }
     });
 
-    // 3. Sum Payments
     allVendorPayments.forEach(p => {
         if (p.supplier && vendorMap[p.supplier]) {
             vendorMap[p.supplier].paid += Number(p.amount || 0);
@@ -2167,7 +2103,7 @@ function renderVendors() {
     let html = '';
 
     for (const [name, data] of Object.entries(vendorMap)) {
-        if (data.billed === 0 && data.paid === 0) continue; // Skip empty
+        if (data.billed === 0 && data.paid === 0) continue; 
         
         let balance = data.billed - data.paid;
         totalGlobalBilled += data.billed;
@@ -2194,7 +2130,6 @@ function renderVendors() {
     if (html === '') html = '<tr><td colspan="5" class="py-6 text-center text-gray-500">No vendor data found.</td></tr>';
     tbody.innerHTML = html;
 
-    // Update Top Metric Cards
     if (document.getElementById('vendor-total-purchased')) {
         document.getElementById('vendor-total-purchased').innerText = `₹${totalGlobalBilled.toFixed(2)}`;
         document.getElementById('vendor-total-paid').innerText = `₹${totalGlobalPaid.toFixed(2)}`;
@@ -2203,15 +2138,12 @@ function renderVendors() {
     }
 }
 
-// Ensure the tab render executes when you switch to it
 document.getElementById('btn-vendors')?.addEventListener('click', renderVendors);
 
-// Expose the view function globally
 window.openVendorDetails = function(vendorName) {
     document.getElementById('modal-vendor-name').innerText = vendorName;
     document.getElementById('pay-vendor-name').value = vendorName;
     
-    // Group purchases by Invoice
     const purchases = allTransactions.filter(t => t.type === 'Purchase' && t.supplier === vendorName);
     const invoices = {};
     let totalBilled = 0;
@@ -2243,7 +2175,6 @@ window.openVendorDetails = function(vendorName) {
     if (invHtml === '') invHtml = '<p class="text-sm text-gray-500 italic">No purchase history found.</p>';
     document.getElementById('modal-vendor-invoices').innerHTML = invHtml;
 
-    // Payment History & Balance Calculation
     const payments = allVendorPayments.filter(p => p.supplier === vendorName).sort((a,b) => new Date(b.date) - new Date(a.date));
     let totalPaid = 0;
     let payHtml = '';
@@ -2270,11 +2201,9 @@ window.openVendorDetails = function(vendorName) {
     if (payHtml === '') payHtml = '<li class="text-gray-500 italic">No payments recorded.</li>';
     document.getElementById('modal-vendor-payments').innerHTML = payHtml;
 
-    // Balance
     let bal = totalBilled - totalPaid;
     document.getElementById('modal-vendor-balance').innerText = `₹${bal.toFixed(2)}`;
 
-    // Show Modal
     document.getElementById('modal-vendor').classList.remove('hidden');
 }
 
@@ -2294,15 +2223,13 @@ window.deleteVendorPayment = async function(id) {
     if(!confirm("Are you sure you want to permanently delete this payment?")) return;
     try {
         await deleteDoc(doc(db, "vendorPayments", id));
-        // Refresh the modal instantly
         window.openVendorDetails(document.getElementById('pay-vendor-name').value);
         if(typeof showSuccessAnimation === 'function') showSuccessAnimation("Payment Deleted!");
     } catch (e) {
-        console.error(e); alert("Failed to delete payment.");
+        alert("Failed to delete payment.");
     }
 };
 
-// Payment Submission
 const formVendorPay = document.getElementById('form-vendor-payment');
 if (formVendorPay) {
     formVendorPay.addEventListener('submit', async (e) => {
@@ -2342,7 +2269,7 @@ if (formVendorPay) {
             if(typeof showSuccessAnimation === 'function') showSuccessAnimation("Payment Saved!");
             
         } catch (error) {
-            console.error(error); alert("Error saving payment.");
+            alert("Error saving payment.");
         } finally {
             btn.disabled = false;
             btn.innerHTML = `Submit Payment`;
@@ -2350,11 +2277,6 @@ if (formVendorPay) {
     });
 }
 
-
-
-// ==========================================
-// EMERGENCY RETROACTIVE INVENTORY FIX
-// ==========================================
 document.getElementById('btn-fix-inventory')?.addEventListener('click', async () => {
     if(!confirm("Are you sure you want to deduct all past sales from current inventory? ONLY RUN THIS ONCE to fix the non-deducting bug!")) return;
     
@@ -2364,7 +2286,6 @@ document.getElementById('btn-fix-inventory')?.addEventListener('click', async ()
     btn.disabled = true;
 
     try {
-        // Calculate missing deductions from ledger
         let netDeductions = {}; 
         
         allTransactions.forEach(t => {
@@ -2373,7 +2294,6 @@ document.getElementById('btn-fix-inventory')?.addEventListener('click', async ()
             
             if (!netDeductions[itemName]) netDeductions[itemName] = 0;
             
-            // Sales subtract from inventory, Sale Returns add back to inventory
             if (t.type === 'Sale') {
                 netDeductions[itemName] += Number(t.qty || 0);
             } else if (t.type === 'Sale Return') {
@@ -2390,7 +2310,7 @@ document.getElementById('btn-fix-inventory')?.addEventListener('click', async ()
                 let currentQty = Number(inv.qty || 0);
                 let newQty = currentQty - netDeductions[itemName];
                 
-                if (newQty < 0) newQty = 0; // Don't let stock go negative
+                if (newQty < 0) newQty = 0; 
                 
                 batch.update(doc(db, "inventory", inv.id), { qty: newQty });
                 updateCount++;
@@ -2404,7 +2324,6 @@ document.getElementById('btn-fix-inventory')?.addEventListener('click', async ()
             alert("No past sales found to deduct.");
         }
     } catch (err) {
-        console.error(err);
         alert("An error occurred while fixing inventory: " + err.message);
     } finally {
         btn.innerHTML = ogText;
