@@ -1226,7 +1226,7 @@ if(saleForm) {
             for (let i = 0; i < window.saleCart.length; i++) {
                 const c = window.saleCart[i]; 
                 const transRef = doc(collection(db, "transactions"));
-                const localInv = (window.allInventory||[]).find(inv => String(inv.name||"").toLowerCase() === String(c.item||"").toLowerCase());
+                const localInv = allInventory.find(inv => String(inv.name||"").toLowerCase() === String(c.item||"").toLowerCase());
                 
                 batch.set(transRef, { 
                     type: "Sale", item: c.item, qty: c.qty, rate: c.rate, amount: c.amount, 
@@ -2275,3 +2275,65 @@ if (formVendorPay) {
         }
     });
 }
+
+
+
+// ==========================================
+// EMERGENCY RETROACTIVE INVENTORY FIX
+// ==========================================
+document.getElementById('btn-fix-inventory')?.addEventListener('click', async () => {
+    if(!confirm("Are you sure you want to deduct all past sales from current inventory? ONLY RUN THIS ONCE to fix the non-deducting bug!")) return;
+    
+    const btn = document.getElementById('btn-fix-inventory'); 
+    const ogText = btn.innerHTML; 
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-2xl"></i> <span class="text-sm">Fixing...</span>`; 
+    btn.disabled = true;
+
+    try {
+        // Calculate missing deductions from ledger
+        let netDeductions = {}; 
+        
+        allTransactions.forEach(t => {
+            const itemName = String(t.item || "").toLowerCase().trim();
+            if (!itemName) return;
+            
+            if (!netDeductions[itemName]) netDeductions[itemName] = 0;
+            
+            // Sales subtract from inventory, Sale Returns add back to inventory
+            if (t.type === 'Sale') {
+                netDeductions[itemName] += Number(t.qty || 0);
+            } else if (t.type === 'Sale Return') {
+                netDeductions[itemName] -= Number(t.qty || 0);
+            }
+        });
+
+        const batch = writeBatch(db);
+        let updateCount = 0;
+
+        allInventory.forEach(inv => {
+            const itemName = String(inv.name || "").toLowerCase().trim();
+            if (netDeductions[itemName] && netDeductions[itemName] !== 0) {
+                let currentQty = Number(inv.qty || 0);
+                let newQty = currentQty - netDeductions[itemName];
+                
+                if (newQty < 0) newQty = 0; // Don't let stock go negative
+                
+                batch.update(doc(db, "inventory", inv.id), { qty: newQty });
+                updateCount++;
+            }
+        });
+
+        if (updateCount > 0) {
+            await batch.commit();
+            showSuccessAnimation(`Fixed inventory for ${updateCount} items!`);
+        } else {
+            alert("No past sales found to deduct.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("An error occurred while fixing inventory: " + err.message);
+    } finally {
+        btn.innerHTML = ogText;
+        btn.disabled = false;
+    }
+});
