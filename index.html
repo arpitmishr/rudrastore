@@ -33,7 +33,6 @@
         .tab { display: none; }
         .tab.active { display: flex; flex-direction: column; animation: fadeIn 0.3s ease-in-out; }
         
-        /* Ensures tabs that aren't using display flex behave correctly but defaults for block otherwise */
         #tab-dashboard, #tab-transactions, #tab-analytics, #tab-sales, #tab-inventory, #tab-settings {
              display: none; 
         }
@@ -70,7 +69,6 @@
             transition: background-color 5000s ease-in-out 0s;
         }
 
-        /* NEW ERP STYLES */
         .erp-table td { 
             padding: 2px 4px; 
             border: 1px solid #e5e7eb; 
@@ -98,7 +96,6 @@
         }
         input[type="number"] { -moz-appearance: textfield; }
         
-        /* Auto complete highlighting */
         .dropdown-item-hover { background-color: #f3f4f6; }
         .dark-mode .dropdown-item-hover { background-color: #4b5563; }
     </style>
@@ -155,9 +152,9 @@
                 <button id="btn-purchases" class="nav-btn flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <i class="fa-solid fa-boxes-packing w-5"></i> Record Purchases
                 </button>              
-<button id="btn-vendors" class="nav-btn flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-    <i class="fa-solid fa-users-viewfinder w-5"></i> Vendors
-</button>
+                <button id="btn-vendors" class="nav-btn flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-users-viewfinder w-5"></i> Vendors
+                </button>
                 <button id="btn-inventory" class="nav-btn flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <i class="fa-solid fa-cubes-stacked w-5"></i> Inventory
                 </button>
@@ -338,10 +335,16 @@
                         
                        <form id="form-sale" class="space-y-4 relative">
                             <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl mb-4">
-                                <div class="relative mb-3">
-                                    <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">Customer / Shop Name (Type 'Cash' for normal)</label>
-                                    <input type="text" id="sale-customer" autocomplete="off" placeholder="Search shop name or GSTIN..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
-                                    <div id="sale-customer-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
+                                <div class="flex flex-col md:flex-row gap-4 mb-3">
+                                    <div class="flex-1 relative">
+                                        <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">Customer / Shop Name (Type 'Cash' for normal)</label>
+                                        <input type="text" id="sale-customer" autocomplete="off" placeholder="Search shop name or GSTIN..." class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                        <div id="sale-customer-dropdown" class="hidden absolute z-[60] w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700"></div>
+                                    </div>
+                                    <div class="w-full md:w-48">
+                                        <label class="block text-sm font-semibold mb-1 text-indigo-900 dark:text-indigo-300">Invoice Date</label>
+                                        <input type="date" id="sale-date" class="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-indigo-200 dark:border-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                    </div>
                                 </div>
                                 <div class="flex gap-4 items-end">
                                     <div class="flex-1">
@@ -370,7 +373,6 @@
                                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Calculate GST for this Item</span>
                             </label>
 
-                            <!-- OLD GST CALCULATION SECTION RETAINED -->
                             <div id="sale-tax-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <div><label class="block text-xs font-semibold mb-1">HSN Code</label><input type="text" id="sale-hsn" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"></div>
                                 <div><label class="block text-xs font-semibold mb-1">GST % Rate</label><select id="sale-gst-rate" class="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded outline-none"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option selected value="18">18%</option><option value="28">28%</option></select></div>
@@ -403,7 +405,10 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">Quick add custom items to revenue.</p>
                         
                         <form id="form-cosmetic" class="space-y-4">
-                            <div><label class="block text-sm font-semibold mb-1">Item Name</label><input type="text" id="cosmetic-item" required placeholder="Description..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-cosmetic outline-none"></div>
+                            <div class="flex flex-col md:flex-row gap-4">
+                                <div class="flex-1"><label class="block text-sm font-semibold mb-1">Item Name</label><input type="text" id="cosmetic-item" required placeholder="Description..." class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-cosmetic outline-none"></div>
+                                <div class="w-full md:w-40"><label class="block text-sm font-semibold mb-1">Sale Date</label><input type="date" id="cosmetic-date" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-cosmetic outline-none"></div>
+                            </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div><label class="block text-sm font-semibold mb-1">Qty</label><input type="number" id="cosmetic-qty" required placeholder="0" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-cosmetic outline-none"></div>
                                 <div><label class="block text-sm font-semibold mb-1">Your Cost (₹)</label><input type="number" id="cosmetic-cost" required placeholder="0.00" step="0.01" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-cosmetic outline-none"></div>
@@ -419,9 +424,6 @@
                 </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- ✨ NEW FULLY REWRITTEN PURCHASE TAB START  -->
-            <!-- ========================================== -->
             <div id="tab-purchases" class="tab w-full max-w-7xl mx-auto flex flex-col h-full overflow-hidden">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
                     <h1 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center"><div class="w-8 h-8 rounded-full bg-danger/10 flex items-center justify-center text-danger text-sm mr-2 shadow-sm"><i class="fa-solid fa-truck-ramp-box"></i></div> Purchase Entry</h1>
@@ -438,9 +440,7 @@
 
                 <div class="bg-white dark:bg-gray-800 flex flex-col flex-1 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden relative">
                     
-                    <!-- Top Master Bar -->
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800 shrink-0">
-                        <!-- Invoice level controls -->
                         <div class="flex items-center gap-6 mb-4">
                             <label class="relative inline-flex items-center cursor-pointer select-none">
                                 <input type="checkbox" id="pur-gst-master" class="sr-only peer" checked>
@@ -450,7 +450,6 @@
                             <div id="pur-supply-badge" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded border">Auto Assessed</div>
                         </div>
 
-                        <!-- Data Fields Grid -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                             <div class="lg:col-span-1">
                                 <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Invoice Date <span class="text-danger">*</span></label>
@@ -479,7 +478,6 @@
                         </div>
                     </div>
 
-                    <!-- Items Detail Table Section -->
                     <div class="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-800 min-h-[250px] erp-table-container custom-scrollbar">
                         <table id="pur-table" class="erp-table min-w-[1000px] w-full text-left whitespace-nowrap table-fixed">
                             <thead class="bg-gray-100 dark:bg-gray-900 sticky top-0 z-40 border-b border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400">
@@ -498,10 +496,6 @@
                                 </tr>
                             </thead>
                             <tbody id="pur-tbody" class="text-sm bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700/60">
-                                <!-- App JS injects row exactly as styled below via template -->
-                                <!-- 
-                                    (Sample visual only before JS loads to stop content flash jump)
-                                -->
                                 <tr class="opacity-50 pointer-events-none" id="dummy-loader">
                                     <td class="text-center text-xs text-gray-400">1</td>
                                     <td><input disabled placeholder="Loading System..." class="erp-input w-full"></td>
@@ -519,7 +513,6 @@
                         </table>
                     </div>
 
-                    <!-- Keyboard help bar fixed over the scroll table footer area -->
                     <div class="bg-gray-50/90 dark:bg-gray-900/90 py-1.5 border-t border-b border-gray-200 dark:border-gray-700 px-4 shrink-0 flex flex-col sm:flex-row justify-between items-center text-[11px] font-medium text-gray-500">
                         <div>
                             <kbd class="border dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1.5 py-0.5 shadow-sm text-gray-800 dark:text-gray-200"><i class="fa-solid fa-turn-down fa-rotate-90 text-[10px]"></i> Enter</kbd> Advance |
@@ -529,19 +522,15 @@
                         <div class="text-right mt-1 sm:mt-0 text-gray-400" id="pur-validation-toast">Auto-saving calculations...</div>
                     </div>
 
-                    <!-- Bottom Calculator & Submit Box -->
                     <div class="flex flex-col md:flex-row items-stretch shrink-0 bg-white dark:bg-gray-800">
                         
-                        <!-- Memory Module -->
                         <div class="md:w-5/12 xl:w-1/2 p-4 hidden md:flex flex-col justify-end border-r border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/50">
                            <div id="pur-smart-assistant" class="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-lg p-3 h-28 flex flex-col justify-center text-sm relative">
                                 <h4 class="text-[10px] font-bold uppercase text-indigo-400 dark:text-indigo-600 absolute top-2 left-3 tracking-widest"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Line Assistant</h4>
                                 <div class="mt-4 text-center text-indigo-400/80 font-medium italic animate-pulse">Waiting for item selection...</div>
-                                <!-- This div receives inner HTML in JS based on focused item showing Memory Pricing -->
                            </div>
                         </div>
 
-                        <!-- Sticky Totals Column -->
                         <div class="w-full md:w-7/12 xl:w-1/2 p-5 bg-yellow-50/30 dark:bg-yellow-900/5">
                             <div class="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-sm font-semibold max-w-sm ml-auto mr-0">
                                 <div class="text-gray-500">Taxable Amt:</div><div id="pur-t-taxable" class="text-right text-gray-800 dark:text-white font-mono font-medium tracking-tight">₹0.00</div>
@@ -576,147 +565,187 @@
                 </div>
             </div>
 
+            <div id="tab-vendors" class="tab max-w-7xl mx-auto w-full">
+                <h1 class="text-2xl font-bold mb-6">Vendors & Payments</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Manage suppliers, view invoice-wise purchases, and record partial or full payments.</p>
 
-            <!-- VENDORS & PAYMENTS TAB -->
-<div id="tab-vendors" class="tab max-w-7xl mx-auto w-full">
-    <h1 class="text-2xl font-bold mb-6">Vendors & Payments</h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Manage suppliers, view invoice-wise purchases, and record partial or full payments.</p>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Credit/Payable</p>
-            <p id="vendor-total-payable" class="text-2xl font-bold text-danger mt-2">₹0.00</p>
-        </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Paid</p>
-            <p id="vendor-total-paid" class="text-2xl font-bold text-success mt-2">₹0.00</p>
-        </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Purchased</p>
-            <p id="vendor-total-purchased" class="text-2xl font-bold text-primary mt-2">₹0.00</p>
-        </div>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-            <h3 class="font-bold"><i class="fa-solid fa-list text-primary mr-2"></i> Supplier Balances</h3>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-left divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-700/50">
-                    <tr>
-                        <th class="py-3 px-4 font-semibold text-gray-500">Vendor Name</th>
-                        <th class="py-3 px-4 font-semibold text-gray-500 text-right">Total Billed</th>
-                        <th class="py-3 px-4 font-semibold text-gray-500 text-right">Total Paid</th>
-                        <th class="py-3 px-4 font-semibold text-gray-500 text-right text-danger">Balance Left</th>
-                        <th class="py-3 px-4 font-semibold text-gray-500 text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="tbody-vendors" class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Vendor Details & Payment Modal -->
-    <div id="modal-vendor" class="hidden fixed inset-0 z-[100] bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700">
-            
-            <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-2xl">
-                <div>
-                    <h2 id="modal-vendor-name" class="text-xl font-bold text-gray-800 dark:text-white">Vendor Name</h2>
-                    <p class="text-sm text-gray-500 font-medium">Balance Due: <span id="modal-vendor-balance" class="text-danger font-bold">₹0.00</span></p>
-                </div>
-                <button onclick="document.getElementById('modal-vendor').classList.add('hidden')" class="text-gray-400 hover:text-danger text-2xl"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-4">
-                    <h3 class="font-bold text-gray-700 dark:text-gray-200 border-b pb-2"><i class="fa-solid fa-file-invoice mr-2"></i> Purchase History by Invoice</h3>
-                    <div id="modal-vendor-invoices" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
-                        <!-- Invoice cards injected via JS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Credit/Payable</p>
+                        <p id="vendor-total-payable" class="text-2xl font-bold text-danger mt-2">₹0.00</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Paid</p>
+                        <p id="vendor-total-paid" class="text-2xl font-bold text-success mt-2">₹0.00</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Purchased</p>
+                        <p id="vendor-total-purchased" class="text-2xl font-bold text-primary mt-2">₹0.00</p>
                     </div>
                 </div>
-                
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700 h-fit">
-                    <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4 border-b pb-2"><i class="fa-solid fa-money-bill-wave text-success mr-2"></i> Record Payment</h3>
-                    <form id="form-vendor-payment" class="space-y-4">
-                        <input type="hidden" id="pay-vendor-name">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Amount (₹)</label>
-                            <input type="number" id="pay-amount" step="0.01" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-success bg-white dark:bg-gray-700 font-bold text-success text-lg">
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                        <h3 class="font-bold"><i class="fa-solid fa-list text-primary mr-2"></i> Supplier Balances</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm text-left divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <th class="py-3 px-4 font-semibold text-gray-500">Vendor Name</th>
+                                    <th class="py-3 px-4 font-semibold text-gray-500 text-right">Total Billed</th>
+                                    <th class="py-3 px-4 font-semibold text-gray-500 text-right">Total Paid</th>
+                                    <th class="py-3 px-4 font-semibold text-gray-500 text-right text-danger">Balance Left</th>
+                                    <th class="py-3 px-4 font-semibold text-gray-500 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-vendors" class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="modal-vendor" class="hidden fixed inset-0 z-[100] bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700">
+                        
+                        <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-2xl">
+                            <div>
+                                <h2 id="modal-vendor-name" class="text-xl font-bold text-gray-800 dark:text-white">Vendor Name</h2>
+                                <p class="text-sm text-gray-500 font-medium">Balance Due: <span id="modal-vendor-balance" class="text-danger font-bold">₹0.00</span></p>
+                            </div>
+                            <button onclick="document.getElementById('modal-vendor').classList.add('hidden')" class="text-gray-400 hover:text-danger text-2xl"><i class="fa-solid fa-xmark"></i></button>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Reference / Note</label>
-                            <input type="text" id="pay-ref" placeholder="UPI Ref, Cash, etc." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-success bg-white dark:bg-gray-700 text-sm">
+
+                        <div class="flex-1 overflow-y-auto p-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 space-y-4">
+                                <h3 class="font-bold text-gray-700 dark:text-gray-200 border-b pb-2"><i class="fa-solid fa-file-invoice mr-2"></i> Purchase History by Invoice</h3>
+                                <div id="modal-vendor-invoices" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700 h-fit">
+                                <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4 border-b pb-2"><i class="fa-solid fa-money-bill-wave text-success mr-2"></i> Record Payment</h3>
+                                <form id="form-vendor-payment" class="space-y-4">
+                                    <input type="hidden" id="pay-vendor-name">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 mb-1">Amount (₹)</label>
+                                        <input type="number" id="pay-amount" step="0.01" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-success bg-white dark:bg-gray-700 font-bold text-success text-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 mb-1">Reference / Note</label>
+                                        <input type="text" id="pay-ref" placeholder="UPI Ref, Cash, etc." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-success bg-white dark:bg-gray-700 text-sm">
+                                    </div>
+                                    <button type="submit" class="w-full bg-success hover:bg-green-600 text-white font-bold py-2 rounded-lg shadow-sm transition-all active:scale-95">Submit Payment</button>
+                                </form>
+                                
+                                <h4 class="font-bold text-gray-700 dark:text-gray-200 mt-6 mb-3 text-sm border-b pb-1">Payment History</h4>
+                                <ul id="modal-vendor-payments" class="space-y-2 text-xs max-h-40 overflow-y-auto custom-scrollbar">
+                                </ul>
+                            </div>
                         </div>
-                        <button type="submit" class="w-full bg-success hover:bg-green-600 text-white font-bold py-2 rounded-lg shadow-sm transition-all active:scale-95">Submit Payment</button>
-                    </form>
-                    
-                    <h4 class="font-bold text-gray-700 dark:text-gray-200 mt-6 mb-3 text-sm border-b pb-1">Payment History</h4>
-                    <ul id="modal-vendor-payments" class="space-y-2 text-xs max-h-40 overflow-y-auto custom-scrollbar">
-                    
-                    </ul>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-           <h1 class="text-2xl font-bold mb-6">Inventory Management</h1>
+            <div id="tab-inventory" class="tab max-w-7xl mx-auto w-full">
+                <h1 class="text-2xl font-bold mb-6">Inventory Management</h1>
 
-<!-- MBA-Level Health Bar -->
-<div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
-        <div>
-            <h3 class="text-lg font-bold text-gray-800 dark:text-white"><i class="fa-solid fa-heart-pulse text-rose-500 mr-2"></i> Portfolio Health Assessment</h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Real-time breakdown of capital locked in current stock tiers.</p>
-        </div>
-        <div class="text-left md:text-right">
-            <span class="text-3xl font-black text-gray-800 dark:text-white" id="stat-inv-value">₹0.00</span>
-            <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Capital Locked</p>
-        </div>
-    </div>
-    <!-- Progress Bar -->
-    <div class="w-full h-4 bg-gray-100 dark:bg-gray-700 rounded-full flex overflow-hidden shadow-inner" id="health-progress-bar">
-        <div class="bg-success h-full transition-all duration-700 relative group" style="width: 0%" id="bar-healthy"><div class="absolute inset-0 bg-white/20 hidden group-hover:block"></div></div>
-        <div class="bg-warning h-full transition-all duration-700 relative group" style="width: 0%" id="bar-low"><div class="absolute inset-0 bg-white/20 hidden group-hover:block"></div></div>
-        <div class="bg-danger h-full transition-all duration-700 relative group" style="width: 0%" id="bar-out"><div class="absolute inset-0 bg-white/20 hidden group-hover:block"></div></div>
-    </div>
-    <div class="flex justify-between items-center mt-4 text-xs font-bold px-1">
-        <div class="flex flex-col"><div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-success shadow-sm"></span> <span class="text-gray-700 dark:text-gray-300">Healthy</span></div><span class="text-gray-400 ml-4.5"><span id="pct-healthy">0</span>%</span></div>
-        <div class="flex flex-col"><div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-warning shadow-sm"></span> <span class="text-gray-700 dark:text-gray-300">Low Stock</span></div><span class="text-gray-400 ml-4.5"><span id="pct-low">0</span>%</span></div>
-        <div class="flex flex-col items-end"><div class="flex items-center gap-1.5"><span class="text-gray-700 dark:text-gray-300">Critical/Out</span> <span class="w-3 h-3 rounded-full bg-danger shadow-sm"></span></div><span class="text-gray-400 mr-4.5"><span id="pct-out">0</span>%</span></div>
-    </div>
-</div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white"><i class="fa-solid fa-heart-pulse text-rose-500 mr-2"></i> Portfolio Health Assessment</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Real-time breakdown of capital locked in current stock tiers.</p>
+                        </div>
+                        <div class="text-left md:text-right">
+                            <span class="text-3xl font-black text-gray-800 dark:text-white" id="stat-inv-value">₹0.00</span>
+                            <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Capital Locked</p>
+                        </div>
+                    </div>
+                    <div class="w-full h-4 bg-gray-100 dark:bg-gray-700 rounded-full flex overflow-hidden shadow-inner" id="health-progress-bar">
+                        <div class="bg-success h-full transition-all duration-700 relative group" style="width: 0%" id="bar-healthy"><div class="absolute inset-0 bg-white/20 hidden group-hover:block"></div></div>
+                        <div class="bg-warning h-full transition-all duration-700 relative group" style="width: 0%" id="bar-low"><div class="absolute inset-0 bg-white/20 hidden group-hover:block"></div></div>
+                        <div class="bg-danger h-full transition-all duration-700 relative group" style="width: 0%" id="bar-out"><div class="absolute inset-0 bg-white/20 hidden group-hover:block"></div></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-4 text-xs font-bold px-1">
+                        <div class="flex flex-col"><div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-success shadow-sm"></span> <span class="text-gray-700 dark:text-gray-300">Healthy</span></div><span class="text-gray-400 ml-4.5"><span id="pct-healthy">0</span>%</span></div>
+                        <div class="flex flex-col"><div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-warning shadow-sm"></span> <span class="text-gray-700 dark:text-gray-300">Low Stock</span></div><span class="text-gray-400 ml-4.5"><span id="pct-low">0</span>%</span></div>
+                        <div class="flex flex-col items-end"><div class="flex items-center gap-1.5"><span class="text-gray-700 dark:text-gray-300">Critical/Out</span> <span class="w-3 h-3 rounded-full bg-danger shadow-sm"></span></div><span class="text-gray-400 mr-4.5"><span id="pct-out">0</span>%</span></div>
+                    </div>
+                </div>
 
-<!-- Enhanced Actionable Stat Cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:border-primary/50 transition-colors">
-        <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center text-primary/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-boxes-stacked"></i></div>
-        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Total SKUs</p>
-        <p id="stat-inv-total" class="text-3xl font-black text-gray-800 dark:text-white relative z-10 tracking-tight">0</p>
-    </div>
-    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:border-success/50 transition-colors">
-        <div class="absolute -right-6 -top-6 w-24 h-24 bg-success/5 rounded-full flex items-center justify-center text-success/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Healthy Capital</p>
-        <p id="stat-inv-healthy-val" class="text-3xl font-black text-success relative z-10 tracking-tight">₹0</p>
-    </div>
-    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-danger/30 relative overflow-hidden bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900/10 group">
-         <div class="absolute -right-6 -top-6 w-24 h-24 bg-danger/10 rounded-full flex items-center justify-center text-danger/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <p class="text-[10px] font-bold text-danger uppercase tracking-widest mb-1 relative z-10">Out of Stock</p>
-        <p id="stat-inv-out" class="text-3xl font-black text-danger relative z-10 tracking-tight">0</p>
-    </div>
-     <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-warning/30 relative overflow-hidden bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-orange-900/10 group">
-         <div class="absolute -right-6 -top-6 w-24 h-24 bg-warning/10 rounded-full flex items-center justify-center text-warning/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-arrow-trend-down"></i></div>
-        <p class="text-[10px] font-bold text-warning-700 dark:text-warning uppercase tracking-widest mb-1 relative z-10">Low Stock Alert</p>
-        <p id="stat-inv-low" class="text-3xl font-black text-warning-700 dark:text-warning relative z-10 tracking-tight">0</p>
-    </div>
-</div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:border-primary/50 transition-colors">
+                        <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center text-primary/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-boxes-stacked"></i></div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Total SKUs</p>
+                        <p id="stat-inv-total" class="text-3xl font-black text-gray-800 dark:text-white relative z-10 tracking-tight">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:border-success/50 transition-colors">
+                        <div class="absolute -right-6 -top-6 w-24 h-24 bg-success/5 rounded-full flex items-center justify-center text-success/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Healthy Capital</p>
+                        <p id="stat-inv-healthy-val" class="text-3xl font-black text-success relative z-10 tracking-tight">₹0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-danger/30 relative overflow-hidden bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900/10 group">
+                         <div class="absolute -right-6 -top-6 w-24 h-24 bg-danger/10 rounded-full flex items-center justify-center text-danger/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <p class="text-[10px] font-bold text-danger uppercase tracking-widest mb-1 relative z-10">Out of Stock</p>
+                        <p id="stat-inv-out" class="text-3xl font-black text-danger relative z-10 tracking-tight">0</p>
+                    </div>
+                     <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-warning/30 relative overflow-hidden bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-orange-900/10 group">
+                         <div class="absolute -right-6 -top-6 w-24 h-24 bg-warning/10 rounded-full flex items-center justify-center text-warning/20 text-4xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                        <p class="text-[10px] font-bold text-warning-700 dark:text-warning uppercase tracking-widest mb-1 relative z-10">Low Stock Alert</p>
+                        <p id="stat-inv-low" class="text-3xl font-black text-warning-700 dark:text-warning relative z-10 tracking-tight">0</p>
+                    </div>
+                </div>
 
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+                    <h3 id="inv-form-title" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Add new item</h3>
+                    <form id="form-inventory" class="flex flex-col md:flex-row gap-3 items-center">
+                        <input type="text" id="inv-name" required placeholder="Item name..." class="flex-1 w-full px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
+                        <input type="text" id="inv-part" placeholder="Part No." class="w-full md:w-32 px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
+                        <input type="number" id="inv-qty" required placeholder="Qty" min="0" class="w-full md:w-28 px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
+                        <input type="number" id="inv-price" required step="0.01" placeholder="Cost (₹)" min="0" class="w-full md:w-32 px-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
+                        <label class="flex items-center gap-1 w-full md:w-auto px-2">
+                            <input type="checkbox" id="inv-gst" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">GST</span>
+                        </label>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button type="submit" id="btn-inv-submit" class="bg-primary hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg shadow-sm transition-all text-sm whitespace-nowrap">Save</button>
+                            <button type="button" id="btn-inv-cancel" style="display:none;" class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium py-2 px-4 rounded-lg shadow-sm transition-all text-sm">Cancel</button>
+                        </div>
+                    </form>
+                </div>
 
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <h3 class="font-medium text-gray-900 dark:text-white whitespace-nowrap">Stock register</h3>
+                            <div class="flex gap-2 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-full border border-gray-100 dark:border-gray-700 flex-wrap">
+                                <button class="inv-tab active bg-white dark:bg-gray-600 text-primary shadow-sm border border-gray-200 dark:border-gray-500 px-3 py-1 rounded-full text-xs font-medium transition-all" data-filter="all">All</button>
+                                <button class="inv-tab text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1 rounded-full text-xs font-medium transition-all border border-transparent" data-filter="out">Out of stock</button>
+                                <button class="inv-tab text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1 rounded-full text-xs font-medium transition-all border border-transparent" data-filter="low">Low stock</button>
+                            </div>
+                        </div>
+                        <div class="relative w-full md:w-56">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="search-inventory" placeholder="Search items..." class="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="table-inventory" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <th class="px-5 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Item</th>
+                                    <th class="px-5 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Stock qty</th>
+                                    <th class="px-5 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Unit cost</th>
+                                    <th class="px-5 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Stock value</th>
+                                    <th class="px-5 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Status</th>
+                                    <th class="px-5 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
-
-            
             <div id="tab-settings" class="tab max-w-3xl mx-auto w-full">
                 <h1 class="text-2xl font-bold mb-6">Settings & Configuration</h1>
                 <div class="space-y-6">
@@ -738,7 +767,7 @@
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <h3 class="font-bold text-lg mb-1"><i class="fa-solid fa-database text-primary mr-2"></i> Data Management</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Import external data, sync to cloud, or cleanup database.</p>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" style="display: none;">
                             <button id="btn-trigger-excel" class="bg-success/10 text-success hover:bg-success hover:text-white border border-success/20 font-semibold py-3 px-4 rounded-xl transition-all flex flex-col items-center justify-center gap-2 h-24">
                                 <i class="fa-solid fa-file-excel text-2xl"></i> <span class="text-sm">Import Excel</span>
@@ -749,8 +778,7 @@
                             <button id="btn-merge-dup" class="bg-warning/10 text-warning hover:bg-warning hover:text-white border border-warning/20 font-semibold py-3 px-4 rounded-xl transition-all flex flex-col items-center justify-center gap-2 h-24">
                                 <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i> <span class="text-sm">Merge Duplicates</span>
                             </button>
-           
-
+                           
                         </div>
                     </div>
                 </div>
@@ -763,8 +791,7 @@
             <button onclick="document.getElementById('btn-purchases').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-boxes-packing text-lg mb-1"></i><span class="text-[10px] font-medium">Buy</span></button>
             <button onclick="document.getElementById('btn-inventory').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-cubes-stacked text-lg mb-1"></i><span class="text-[10px] font-medium">Stock</span></button>
             <button onclick="document.getElementById('btn-transactions').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-list-ul text-lg mb-1"></i><span class="text-[10px] font-medium">Ledger</span></button>
-           
-<button onclick="document.getElementById('btn-vendors').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-users-viewfinder text-lg mb-1"></i><span class="text-[10px] font-medium">Vendors</span></button>
+            <button onclick="document.getElementById('btn-vendors').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-users-viewfinder text-lg mb-1"></i><span class="text-[10px] font-medium">Vendors</span></button>
             <button onclick="document.getElementById('btn-analytics').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-chart-pie text-lg mb-1"></i><span class="text-[10px] font-medium">Analytics</span></button>
             <button onclick="document.getElementById('btn-settings').click(); updateMobileNav(this);" class="mob-nav-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex flex-col items-center p-2 min-w-[65px] transition-colors"><i class="fa-solid fa-gear text-lg mb-1"></i><span class="text-[10px] font-medium">Config</span></button>
         </nav>
@@ -778,11 +805,9 @@
             });
             activeBtn.classList.remove('text-gray-400');
             activeBtn.classList.add('text-primary');
-            // Remove overflow block just in case to ensure normal scrolling triggers ok 
             document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
         }
     </script>
-    <!-- Important: Your full system execution begins via type="module" -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
