@@ -1845,22 +1845,45 @@ function renderCharts(monthlyData, abcTotals, fsnTotals) {
 // 16. INVENTORY MANAGEMENT (Table, Add, Edit)
 // ==========================================
 function updateInventoryStats() {
-    let totalItems = allInventory.length; let outCount = 0; let lowCount = 0; let totalValue = 0;
+    let totalItems = allInventory.length; 
+    let outCount = 0; let lowCount = 0; let healthyCount = 0;
+    let totalValue = 0; let healthyValue = 0;
+    
     allInventory.forEach(item => { 
         const qty = Number(item.qty) || 0; 
         const price = Number(item.price) || 0; 
-        totalValue += (qty * price); 
-        if (qty === 0) outCount++; else if (qty <= 2) lowCount++; 
+        let itemVal = (qty * price);
+        totalValue += itemVal; 
+        
+        if (qty === 0) outCount++; 
+        else if (qty <= 2) lowCount++; 
+        else {
+            healthyCount++;
+            healthyValue += itemVal;
+        }
     });
     
+    let pctHealthy = totalItems ? Math.round((healthyCount / totalItems) * 100) : 0;
+    let pctLow = totalItems ? Math.round((lowCount / totalItems) * 100) : 0;
+    let pctOut = totalItems ? Math.round((outCount / totalItems) * 100) : 0;
+
     if(document.getElementById('stat-inv-total')) {
         document.getElementById('stat-inv-total').innerText = totalItems; 
         document.getElementById('stat-inv-value').innerText = `₹${totalValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`; 
+        document.getElementById('stat-inv-healthy-val').innerText = `₹${healthyValue.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
         document.getElementById('stat-inv-out').innerText = outCount; 
         document.getElementById('stat-inv-low').innerText = lowCount;
+        
+        // Update MBA health progress bars
+        document.getElementById('bar-healthy').style.width = pctHealthy + '%';
+        document.getElementById('bar-low').style.width = pctLow + '%';
+        document.getElementById('bar-out').style.width = pctOut + '%';
+        
+        document.getElementById('pct-healthy').innerText = pctHealthy;
+        document.getElementById('pct-low').innerText = pctLow;
+        document.getElementById('pct-out').innerText = pctOut;
     }
 }
-
 function renderInventoryTable() {
     const tbody = document.querySelector('#table-inventory tbody');
     if(!tbody) return;
@@ -1878,32 +1901,44 @@ function renderInventoryTable() {
         return true; 
     });
     
-    filtered.forEach((item) => {
+   filtered.forEach((item) => {
         const itemName = item.name || "Unknown"; 
-        const itemPart = item.partNumber ? `<span class="text-[10px] text-gray-400 block -mt-1">PN: ${item.partNumber}</span>` : ''; 
-        const itemHsn = item.hsn ? `<span class="text-[10px] text-indigo-400 block">HSN: ${item.hsn}</span>` : '';
+        const itemPart = item.partNumber ? `<span class="text-[10px] text-gray-400 block -mt-1 font-mono">PN: ${item.partNumber}</span>` : ''; 
+        const itemHsn = item.hsn ? `<span class="text-[10px] text-indigo-400 block font-mono">HSN: ${item.hsn}</span>` : '';
         const itemQty = Number(item.qty) || 0; 
         const itemPrice = Number(item.price) || 0; 
         const stockValue = itemQty * itemPrice;
         
+        // Calculate visual stock level bar (Assumes 20 is a "full" visual bar, adjusts dynamically)
+        let stockPct = Math.min((itemQty / 20) * 100, 100);
+        let barColor = itemQty === 0 ? 'bg-danger' : (itemQty <= 2 ? 'bg-warning' : 'bg-success');
+
         let badgeHtml = ""; 
-        if (itemQty === 0) badgeHtml = `<span class="px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-full whitespace-nowrap">Out of stock</span>`; 
-        else if (itemQty <= 2) badgeHtml = `<span class="px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-full whitespace-nowrap">Low &mdash; ${itemQty} left</span>`; 
-        else badgeHtml = `<span class="px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full whitespace-nowrap">${itemQty} in stock</span>`;
+        if (itemQty === 0) badgeHtml = `<span class="px-2 py-1 text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded uppercase tracking-wider">Out of stock</span>`; 
+        else if (itemQty <= 2) badgeHtml = `<span class="px-2 py-1 text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded uppercase tracking-wider">Low Stock</span>`; 
+        else badgeHtml = `<span class="px-2 py-1 text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded uppercase tracking-wider">Healthy</span>`;
         
         let gstBadge = item.hasGST ? `<span class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold uppercase">GST</span>` : '';
         
-        rowsHtml.push(`<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"><td class="px-5 py-4"><div class="font-medium text-gray-900 dark:text-white flex items-center">${itemName} ${gstBadge}</div>${itemPart}${itemHsn}</td><td class="px-5 py-4 text-right text-gray-900 dark:text-gray-100 font-medium">${itemQty}</td><td class="px-5 py-4 text-right text-gray-900 dark:text-gray-100">₹${itemPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td class="px-5 py-4 text-right text-gray-600 dark:text-gray-400 font-medium">₹${stockValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td class="px-5 py-4 text-right">${badgeHtml}</td><td class="px-5 py-4 text-right"><div class="flex justify-end gap-2"><button class="btn-edit w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary transition-colors" data-id="${item.id}" data-name="${itemName}" data-qty="${itemQty}" data-price="${itemPrice}" data-gst="${item.hasGST ? 'true' : ''}" data-part="${item.partNumber || ''}" data-hsn="${item.hsn || ''}" title="Edit"><i class="fa-solid fa-pen pointer-events-none text-xs"></i></button><button class="btn-delete w-8 h-8 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-danger hover:border-red-200 transition-colors" data-id="${item.id}" title="Delete"><i class="fa-solid fa-xmark pointer-events-none"></i></button></div></td></tr>`);
+        rowsHtml.push(`
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                <td class="px-5 py-4"><div class="font-bold text-gray-900 dark:text-white flex items-center">${itemName} ${gstBadge}</div>${itemPart}${itemHsn}</td>
+                <td class="px-5 py-4 text-right">
+                    <span class="text-lg font-black text-gray-900 dark:text-gray-100">${itemQty}</span>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mt-1.5 overflow-hidden flex"><div class="${barColor} h-1 rounded-full transition-all" style="width: ${stockPct}%"></div></div>
+                </td>
+                <td class="px-5 py-4 text-right text-gray-600 dark:text-gray-300 font-mono text-sm">₹${itemPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="px-5 py-4 text-right font-black text-gray-800 dark:text-gray-100 font-mono tracking-tight text-sm">₹${stockValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="px-5 py-4 text-right">${badgeHtml}</td>
+                <td class="px-5 py-4 text-right">
+                    <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="btn-edit w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary transition-all shadow-sm hover:shadow" data-id="${item.id}" data-name="${itemName}" data-qty="${itemQty}" data-price="${itemPrice}" data-gst="${item.hasGST ? 'true' : ''}" data-part="${item.partNumber || ''}" data-hsn="${item.hsn || ''}" title="Edit"><i class="fa-solid fa-pen pointer-events-none text-xs"></i></button>
+                        <button class="btn-delete w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-danger hover:border-red-200 transition-all shadow-sm hover:shadow" data-id="${item.id}" title="Delete"><i class="fa-solid fa-xmark pointer-events-none"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `);
     });
-    
-    if (filtered.length === 0) rowsHtml.push(`<tr><td colspan="6" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">No items found.</td></tr>`); 
-    tbody.innerHTML = rowsHtml.join('');
-}
-
-document.getElementById('search-inventory')?.addEventListener('input', (e) => { 
-    currentInventorySearch = e.target.value; 
-    renderInventoryTable(); 
-});
 
 document.querySelectorAll('.inv-tab').forEach(tab => { 
     tab.addEventListener('click', (e) => { 
