@@ -2216,11 +2216,18 @@ window.openVendorDetails = function(vendorName) {
     payments.forEach(p => {
         totalPaid += Number(p.amount);
         let dateStr = new Date(p.date).toLocaleDateString('en-GB');
-        let refStr = p.ref ? `(${p.ref})` : '';
+        let refStr = p.ref ? p.ref : 'No Reference';
         payHtml += `
-            <li class="flex justify-between items-center bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
-                <span><span class="text-gray-400 mr-2">${dateStr}</span> ${refStr}</span>
-                <span class="font-bold text-success">₹${Number(p.amount).toFixed(2)}</span>
+            <li class="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">${dateStr}</span>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${refStr}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-black text-success text-base mr-2">₹${Number(p.amount).toFixed(2)}</span>
+                    <button type="button" onclick="window.editVendorPayment('${p.id}', '${p.amount}', '${p.ref || ''}')" class="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 text-gray-400 hover:text-warning hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-colors flex items-center justify-center" title="Edit Payment"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                    <button type="button" onclick="window.deleteVendorPayment('${p.id}')" class="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 text-gray-400 hover:text-danger hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center" title="Delete Payment"><i class="fa-solid fa-trash text-xs"></i></button>
+                </div>
             </li>
         `;
     });
@@ -2236,6 +2243,30 @@ window.openVendorDetails = function(vendorName) {
     document.getElementById('modal-vendor').classList.remove('hidden');
 }
 
+window.editVendorPayment = function(id, amount, ref) {
+    document.getElementById('pay-amount').value = amount;
+    document.getElementById('pay-ref').value = ref;
+    const form = document.getElementById('form-vendor-payment');
+    form.setAttribute('data-edit-id', id);
+    
+    const btn = form.querySelector('button[type="submit"]');
+    btn.innerHTML = `<i class="fa-solid fa-wrench"></i> Update Payment`;
+    btn.classList.replace('bg-success', 'bg-warning');
+    btn.classList.replace('hover:bg-green-600', 'hover:bg-yellow-500');
+};
+
+window.deleteVendorPayment = async function(id) {
+    if(!confirm("Are you sure you want to permanently delete this payment?")) return;
+    try {
+        await deleteDoc(doc(db, "vendorPayments", id));
+        // Refresh the modal instantly
+        window.openVendorDetails(document.getElementById('pay-vendor-name').value);
+        if(typeof showSuccessAnimation === 'function') showSuccessAnimation("Payment Deleted!");
+    } catch (e) {
+        console.error(e); alert("Failed to delete payment.");
+    }
+};
+
 // Payment Submission
 const formVendorPay = document.getElementById('form-vendor-payment');
 if (formVendorPay) {
@@ -2245,6 +2276,7 @@ if (formVendorPay) {
         const vendorName = document.getElementById('pay-vendor-name').value;
         const amount = parseFloat(document.getElementById('pay-amount').value);
         const ref = document.getElementById('pay-ref').value.trim();
+        const editId = formVendorPay.getAttribute('data-edit-id');
 
         if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount.");
 
@@ -2252,23 +2284,30 @@ if (formVendorPay) {
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
 
         try {
-            await addDoc(collection(db, "vendorPayments"), {
-                supplier: vendorName,
-                amount: amount,
-                ref: ref,
-                date: new Date().toISOString()
-            });
+            if (editId) {
+                await updateDoc(doc(db, "vendorPayments", editId), {
+                    amount: amount,
+                    ref: ref
+                });
+                formVendorPay.removeAttribute('data-edit-id');
+                btn.classList.replace('bg-warning', 'bg-success');
+                btn.classList.replace('hover:bg-yellow-500', 'hover:bg-green-600');
+            } else {
+                await addDoc(collection(db, "vendorPayments"), {
+                    supplier: vendorName,
+                    amount: amount,
+                    ref: ref,
+                    date: new Date().toISOString()
+                });
+            }
             formVendorPay.reset();
             
-            // Refresh modal and underlying table
             window.openVendorDetails(vendorName);
             renderVendors();
-
-            if(typeof showSuccessAnimation === 'function') showSuccessAnimation("Payment Recorded!");
+            if(typeof showSuccessAnimation === 'function') showSuccessAnimation("Payment Saved!");
             
         } catch (error) {
-            console.error(error);
-            alert("Error saving payment.");
+            console.error(error); alert("Error saving payment.");
         } finally {
             btn.disabled = false;
             btn.innerHTML = `Submit Payment`;
